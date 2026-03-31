@@ -1,0 +1,95 @@
+# Construct build objects
+
+- model: build.build
+  pk: 1
+  fields:
+    part: 100  # Build against part 100 "Bob"
+    batch: 'B1'
+    reference: "BO-0001"
+    title: 'Building 7 parts'
+    quantity: 7
+    notes: 'Some simple notes'
+    status: 10  # PENDING
+    creation_date: '2019-03-16'
+    link: http://www.google.com
+    tree_id: 1
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: build.build
+  pk: 2
+  fields:
+    part: 50
+    reference: "BO-0002"
+    title: 'Making things'
+    batch: 'B2'
+    status: 40  # COMPLETE
+    quantity: 21
+    notes: 'Some more simple notes'
+    creation_date: '2019-03-16'
+    tree_id: 2
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: build.build
+  pk: 3
+  fields:
+    part: 50
+    reference: "BO-003"
+    title: 'Making things'
+    batch: 'B2'
+    status: 40  # COMPLETE
+    quantity: 21
+    notes: 'Some even more simple notes'
+    creation_date: '2019-03-16'
+    tree_id: 4
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: build.build
+  pk: 4
+  fields:
+    part: 50
+    reference: "BO-4"
+    title: 'Making things'
+    batch: 'B4'
+    status: 40  # COMPLETE
+    quantity: 21
+    notes: 'Some even even more simple notes'
+    creation_date: '2019-03-16'
+    tree_id: 5
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: build.build
+  pk: 5
+  fields:
+    part: 25
+    reference: "BO-0005"
+    title: "Building some Widgets"
+    batch: "B10"
+    status: 40 # Complete
+    quantity: 10
+    creation_date: '2019-03-16'
+    notes: "A thing"
+    tree_id: 3
+    level: 0
+    lft: 1
+    rght: 2
+
+- model: build.builditem
+  pk: 1
+  fields:
+    quantity: 3
+    stock_item: 1
+
+- model: build.builditem
+  pk: 2
+  fields:
+    quantity: 10
+    stock_item: 11
+    install_into: 100

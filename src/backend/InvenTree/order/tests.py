@@ -1,0 +1,730 @@
+"""Various unit tests for order models."""
+
+from datetime import datetime, timedelta
+from decimal import Decimal
+
+import django.core.exceptions as django_exceptions
+from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
+from django.test import TestCase
+
+from djmoney.money import Money
+
+import common.models
+import order.tasks
+from common.settings import get_global_setting, set_global_setting
+from company.models import Company, Contact, SupplierPart
+from InvenTree.helpers import current_date
+from InvenTree.unit_test import (
+    ExchangeRateMixin,
+    PluginRegistryMixin,
+    addUserPermission,
+)
+from order.status_codes import PurchaseOrderStatus
+from part.models import Part
+from stock.models import StockItem, StockLocation
+from users.models import Owner
+
+from .models import (
+    PurchaseOrder,
+    PurchaseOrderExtraLine,
+    PurchaseOrderLineItem,
+    ReturnOrder,
+    ReturnOrderExtraLine,
+    ReturnOrderLineItem,
+    SalesOrder,
+    SalesOrderExtraLine,
+    SalesOrderLineItem,
+)
+
+
+class OrderTest(ExchangeRateMixin, PluginRegistryMixin, TestCase):
+    """Tests to ensure that the order models are functioning correctly."""
+
+    fixtures = [
+        'company',
+        'supplier_part',
+        'price_breaks',
+        'category',
+        'part',
+        'location',
+        'stock',
+        'order',
+        'users',
+    ]
+
+    def test_basics(self):
+        """Basic tests e.g. repr functions etc."""
+        for pk in range(1, 8):
+            order = PurchaseOrder.objects.get(pk=pk)
+            self.assertEqual(
+                order.get_absolute_url(), f'/web/purchasing/purchase-order/{pk}'
+            )
+
+            self.assertEqual(order.reference, f'PO-{pk:04d}')
+
+        line = PurchaseOrderLineItem.objects.get(pk=1)
+        self.assertEqual(str(line), '100 x ACME0001 - PO-0001 - ACME')
+
+    def test_validate_dates(self):
+        """Test for validation of date fields."""
+        order = PurchaseOrder.objects.first()
+
+        order.start_date = current_date()
+        order.target_date = current_date() - timedelta(days=5)
+
+        with self.assertRaises(django_exceptions.ValidationError) as err:
+            order.clean()
+
+        self.assertIn('Target date must be after start date', err.exception.messages)
+        self.assertIn('Start date must be before target date', err.exception.messages)
+
+        order.target_date = current_date() + timedelta(days=5)
+
+        # This should now pass
+        order.clean()
+        order.save()
+
+    def test_validate_contact(self):
+        """Test for validation of linked Contact."""
+        order = PurchaseOrder.objects.first()
+
+        # Create a contact which does does not match the company
+        company = Company.objects.exclude(pk=order.supplier.pk).first()
+        self.assertIsNotNone(company)
+        contact = Contact.objects.create(company=company, name='Harold Henderson')
+
+        order.contact = contact
+
+        with self.assertRaises(django_exceptions.ValidationError) as err:
+            order.clean()
+
+        self.assertIn('Contact does not match selected company', err.exception.messages)
+
+        # Update the contact, point to the right company
+        contact.company = order.supplier
+        contact.save()
+
+        order.contact = contact
+        order.clean()  # Should not raise
+        order.save()
+
+    def test_rebuild_reference(self):
+        """Test that the reference_int field is correctly updated when the model is saved."""
+        order = PurchaseOrder.objects.get(pk=1)
+        order.save()
+        self.assertEqual(order.reference_int, 1)
+
+        order.reference = '12345XYZ'
+        order.save()
+        self.assertEqual(order.reference_int, 12345)
+
+    def test_locking(self):
+        """Test the (auto)locking functionality of the (Purchase)Order model."""
+        order = PurchaseOrder.objects.get(pk=1)
+
+        set_global_setting(PurchaseOrder.UNLOCK_SETTING, True)
+
+        order.status = PurchaseOrderStatus.PENDING
+        order.save()
+        self.assertFalse(order.check_locked())
+
+        order.status = PurchaseOrderStatus.COMPLETE
+        order.save()
+        self.assertFalse(order.check_locked())
+
+        order.add_line_item(SupplierPart.objects.get(pk=100), 100)
+        last_line = order.lines.last()
+        self.assertEqual(last_line.quantity, 100)
+
+        # Reset
+        order.status = PurchaseOrderStatus.PENDING
+        order.save()
+
+        # Turn on auto-locking
+        set_global_setting(PurchaseOrder.UNLOCK_SETTING, False)
+        # still not locked
+        self.assertFalse(order.check_locked())
+
+        order.status = PurchaseOrderStatus.COMPLETE
+
+        # The instance is locked, the db instance is not
+        self.assertFalse(order.check_locked(True))
+        self.assertTrue(order.check_locked())
+        order.save()
+
+        # Now everything is locked
+        self.assertTrue(order.check_locked(True))
+        self.assertTrue(order.check_locked())
+
+        # No editing allowed
+        with self.assertRaises(django_exceptions.ValidationError):
+            order.description = 'test1'
+            order.save()
+
+        order.refresh_from_db()
+        self.assertEqual(order.description, 'Ordering some screws')
+
+        # Also no adding of line items
+        with self.assertRaises(django_exceptions.ValidationError):
+            order.add_line_item(SupplierPart.objects.get(pk=100), 100)
+        # or deleting
+        with self.assertRaises(django_exceptions.ValidationError):
+            last_line.delete()
+
+        # Still can create a completed item
+        PurchaseOrder.objects.create(
+            supplier=Company.objects.get(pk=1),
+            reference='PO-99999',
+            status=PurchaseOrderStatus.COMPLETE,
+        )
+
+        # No editing (except status ;-) ) allowed
+        order.status = PurchaseOrderStatus.PENDING
+        order.save()
+
+        # Now it is a free for all again
+        order.description = 'test2'
+        order.save()
+
+        order.refresh_from_db()
+        self.assertEqual(order.description, 'test2')
+
+    def test_overdue(self):
+        """Test overdue status functionality."""
+        today = datetime.now().date()
+
+        order = PurchaseOrder.objects.get(pk=1)
+        self.assertFalse(order.is_overdue)
+
+        order.target_date = today - timedelta(days=5)
+        order.save()
+        self.assertTrue(order.is_overdue)
+
+        order.target_date = today + timedelta(days=1)
+        order.save()
+        self.assertFalse(order.is_overdue)
+
+    def test_on_order(self):
+        """There should be 3 separate items on order for the M2x4 LPHS part."""
+        part = Part.objects.get(name='M2x4 LPHS')
+
+        open_orders = []
+
+        for supplier in part.supplier_parts.all():
+            open_orders += supplier.open_orders()
+
+        self.assertEqual(len(open_orders), 4)
+
+        # Test the total on-order quantity
+        self.assertEqual(part.on_order, 1400)
+
+    def test_add_items(self):
+        """Test functions for adding line items to an order."""
+        order = PurchaseOrder.objects.get(pk=1)
+
+        self.assertEqual(order.status, PurchaseOrderStatus.PENDING)
+        self.assertEqual(order.lines.count(), 4)
+
+        sku = SupplierPart.objects.get(SKU='ACME-WIDGET')
+        part = sku.part
+
+        # Try to order some invalid things
+        with self.assertRaises(django_exceptions.ValidationError):
+            order.add_line_item(sku, -999)
+
+        with self.assertRaises(django_exceptions.ValidationError):
+            order.add_line_item(sku, 'not a number')
+
+        # Order the part
+        self.assertEqual(part.on_order, 0)
+
+        order.add_line_item(sku, 100)
+
+        self.assertEqual(part.on_order, 100)
+        self.assertEqual(order.lines.count(), 5)
+
+        # Order the same part again (it should be merged)
+        order.add_line_item(sku, 50)
+        self.assertEqual(order.lines.count(), 5)
+        self.assertEqual(part.on_order, 150)
+
+        # Try to order a supplier part from the wrong supplier
+        sku = SupplierPart.objects.get(SKU='ZERG-WIDGET')
+
+        with self.assertRaises(django_exceptions.ValidationError):
+            order.add_line_item(sku, 99)
+
+    def test_pricing(self):
+        """Test functions for adding line items to an order including price-breaks."""
+        order = PurchaseOrder.objects.get(pk=7)
+
+        self.assertEqual(order.status, PurchaseOrderStatus.PENDING)
+        self.assertEqual(order.lines.count(), 0)
+
+        sku = SupplierPart.objects.get(SKU='ZERGM312')
+        part = sku.part
+
+        # Order the part
+        self.assertEqual(part.on_order, 0)
+
+        # Order 25 with manually set high value
+        pp = sku.get_price(25)
+        order.add_line_item(sku, 25, purchase_price=pp)
+        self.assertEqual(part.on_order, 25)
+        self.assertEqual(order.lines.count(), 1)
+        self.assertEqual(order.lines.first().purchase_price.amount, 200)
+
+        # Add a few, now the pricebreak should adjust although wrong price given
+        order.add_line_item(sku, 10, purchase_price=sku.get_price(25))
+        self.assertEqual(part.on_order, 35)
+        self.assertEqual(order.lines.count(), 1)
+        self.assertEqual(order.lines.first().purchase_price.amount, 8)
+
+        # Order the same part again (it should be merged)
+        order.add_line_item(sku, 100, purchase_price=sku.get_price(100))
+        self.assertEqual(order.lines.count(), 1)
+        self.assertEqual(part.on_order, 135)
+        self.assertEqual(order.lines.first().purchase_price.amount, 1.25)
+
+    def test_receive(self):
+        """Test order receiving functions."""
+        part = Part.objects.get(name='M2x4 LPHS')
+
+        # Receive some items
+        line = PurchaseOrderLineItem.objects.get(id=1)
+
+        order = line.order
+        loc = StockLocation.objects.get(id=1)
+
+        # There should be two lines against this order
+        self.assertEqual(len(order.pending_line_items()), 4)
+
+        # Should fail, as order is 'PENDING' not 'PLACED"
+        self.assertEqual(order.status, PurchaseOrderStatus.PENDING)
+
+        with self.assertRaises(django_exceptions.ValidationError):
+            order.receive_line_item(line, loc, 50, user=None)
+
+        order.place_order()
+
+        self.assertEqual(order.status, PurchaseOrderStatus.PLACED)
+
+        order.receive_line_item(line, loc, 50, user=None)
+
+        line.refresh_from_db()
+        self.assertEqual(line.remaining(), 50)
+
+        self.assertEqual(part.on_order, 1350)
+
+        # Try to order some invalid things
+        with self.assertRaises(django_exceptions.ValidationError):
+            order.receive_line_item(line, loc, -10, user=None)
+
+        with self.assertRaises(django_exceptions.ValidationError):
+            order.receive_line_item(line, loc, 'not a number', user=None)
+
+        # Receive the rest of the items
+        order.receive_line_item(line, loc, 50, user=None)
+
+        self.assertEqual(part.on_order, 1300)
+
+        line = PurchaseOrderLineItem.objects.get(id=2)
+
+        in_stock = part.total_stock
+
+        order.receive_line_item(line, loc, 500, user=None)
+
+        # Check that the part stock quantity has increased by the correct amount
+        self.assertEqual(part.total_stock, in_stock + 500)
+
+        self.assertEqual(part.on_order, 1100)
+        self.assertEqual(order.status, PurchaseOrderStatus.PLACED)
+
+        for line in order.pending_line_items():
+            order.receive_line_item(line, loc, line.quantity, user=None)
+
+        self.assertEqual(order.status, PurchaseOrderStatus.COMPLETE)
+
+    def test_receive_pack_size(self):
+        """Test receiving orders from suppliers with different pack_size values."""
+        prt = Part.objects.get(pk=1)
+        sup = Company.objects.get(pk=1)
+
+        # Create a new supplier part with larger pack size
+        sp_1 = SupplierPart.objects.create(
+            part=prt, supplier=sup, SKU='SKUx10', pack_quantity='10'
+        )
+
+        # Create a new supplier part with smaller pack size
+        sp_2 = SupplierPart.objects.create(
+            part=prt, supplier=sup, SKU='SKUx0.1', pack_quantity='0.1'
+        )
+
+        # Record values before we start
+        on_order = prt.on_order
+        in_stock = prt.total_stock
+
+        n = PurchaseOrder.objects.count()
+
+        # Create a new PurchaseOrder
+        po = PurchaseOrder.objects.create(
+            supplier=sup, reference=f'PO-{n + 1}', description='Some PO'
+        )
+
+        # Add line items
+
+        # 3 x 10 = 30
+        line_1 = PurchaseOrderLineItem.objects.create(
+            order=po,
+            part=sp_1,
+            quantity=3,
+            # "Unit price" should be $100USD
+            purchase_price=Money(1000, 'USD'),
+        )
+
+        # 13 x 0.1 = 1.3
+        line_2 = PurchaseOrderLineItem.objects.create(
+            order=po,
+            part=sp_2,
+            quantity=13,
+            purchase_price=Money(10, 'USD'),  # "Unit price" should be $100USD
+        )
+
+        po.place_order()
+
+        # The 'on_order' quantity should have been increased by 31.3
+        self.assertEqual(prt.on_order, round(on_order + Decimal(31.3), 1))
+
+        loc = StockLocation.objects.get(id=1)
+
+        # Receive 1x item against line_1
+        po.receive_line_item(line_1, loc, 1, user=None)
+
+        # Receive 5x item against line_2
+        po.receive_line_item(line_2, loc, 5, user=None)
+
+        line_1.refresh_from_db()
+        line_2.refresh_from_db()
+
+        # Check that the line items have been updated correctly
+        self.assertEqual(line_1.quantity, 3)
+        self.assertEqual(line_1.received, 1)
+        self.assertEqual(line_1.remaining(), 2)
+
+        self.assertEqual(line_2.quantity, 13)
+        self.assertEqual(line_2.received, 5)
+        self.assertEqual(line_2.remaining(), 8)
+
+        # The 'on_order' quantity should have decreased by 10.5
+        self.assertEqual(
+            prt.on_order, round(on_order + Decimal(31.3) - Decimal(10.5), 1)
+        )
+
+        # The 'in_stock' quantity should have increased by 10.5
+        self.assertEqual(prt.total_stock, round(in_stock + Decimal(10.5), 1))
+
+        # Check that the unit purchase price value has been updated correctly
+        si = StockItem.objects.filter(supplier_part=sp_1)
+        self.assertEqual(si.count(), 1)
+
+        # Ensure that received quantity and unit purchase price data are correct
+        si = si.first()
+        self.assertEqual(si.quantity, 10)
+        self.assertEqual(si.purchase_price, Money(100, 'USD'))
+
+        si = StockItem.objects.filter(supplier_part=sp_2)
+        self.assertEqual(si.count(), 1)
+
+        # Ensure that received quantity and unit purchase price data are correct
+        si = si.first()
+        self.assertEqual(si.quantity, 0.5)
+        self.assertEqual(si.purchase_price, Money(100, 'USD'))
+
+    def test_receive_convert_currency(self):
+        """Test receiving orders with different currencies."""
+        # Setup some dummy exchange rates
+        self.generate_exchange_rates()
+
+        set_global_setting('INVENTREE_DEFAULT_CURRENCY', 'USD')
+        self.assertEqual(get_global_setting('INVENTREE_DEFAULT_CURRENCY'), 'USD')
+
+        # Enable auto conversion
+        set_global_setting('PURCHASEORDER_CONVERT_CURRENCY', True)
+
+        order = PurchaseOrder.objects.get(pk=7)
+        sku = SupplierPart.objects.get(SKU='ZERGM312')
+        loc = StockLocation.objects.get(id=1)
+
+        # Add a line item (in CAD)
+        line = order.add_line_item(sku, 100, purchase_price=Money(1.25, 'CAD'))
+
+        order.place_order()
+
+        # Receive a line item, should be converted to GBP
+        order.receive_line_item(line, loc, 50, user=None)
+        item = order.stock_items.order_by('-pk').first()
+
+        self.assertEqual(item.quantity, 50)
+        self.assertEqual(item.purchase_price_currency, 'USD')
+        self.assertAlmostEqual(item.purchase_price.amount, Decimal(0.7353), 3)
+
+        # Disable auto conversion
+        set_global_setting('PURCHASEORDER_CONVERT_CURRENCY', False)
+
+        order.receive_line_item(line, loc, 30, user=None)
+        item = order.stock_items.order_by('-pk').first()
+
+        self.assertEqual(item.quantity, 30)
+        self.assertEqual(item.purchase_price_currency, 'CAD')
+        self.assertAlmostEqual(item.purchase_price.amount, Decimal(1.25), 3)
+
+    def test_overdue_notification(self):
+        """Test overdue purchase order notification.
+
+        Ensure that a notification is sent when a PurchaseOrder becomes overdue
+        """
+        self.ensurePluginsLoaded()
+
+        po = PurchaseOrder.objects.get(pk=1)
+
+        # Ensure that the right users have the right permissions
+        for user_id in [2, 4]:
+            user = get_user_model().objects.get(pk=user_id)
+            addUserPermission(user, 'order', 'purchaseorder', 'view')
+            user.is_active = True
+            user.save()
+
+        # Created by 'sam'
+        po.created_by = get_user_model().objects.get(pk=4)
+
+        # Responsible : 'Engineers' group
+        responsible = Owner.create(obj=Group.objects.get(pk=2))
+        po.responsible = responsible
+
+        # Target date = yesterday
+        po.target_date = datetime.now().date() - timedelta(days=1)
+        po.save()
+
+        # Check for overdue purchase orders
+        order.tasks.check_overdue_purchase_orders()
+
+        for user_id in [2, 3, 4]:
+            messages = common.models.NotificationMessage.objects.filter(
+                category='order.overdue_purchase_order', user__id=user_id
+            )
+
+            # User ID 3 is inactive, and thus should not receive notifications
+            if user_id == 3:
+                self.assertFalse(messages.exists())
+                continue
+            else:
+                self.assertTrue(messages.exists())
+
+            msg = messages.first()
+
+            self.assertEqual(msg.target_object_id, 1)
+            self.assertEqual(msg.name, 'Overdue Purchase Order')
+
+    def test_new_po_notification(self):
+        """Test that a notification is sent when a new PurchaseOrder is created.
+
+        - The responsible user(s) should receive a notification
+        - The creating user should *not* receive a notification
+        """
+        po = PurchaseOrder.objects.create(
+            supplier=Company.objects.get(pk=1),
+            reference='XYZABC',
+            created_by=get_user_model().objects.get(pk=3),
+            responsible=Owner.create(obj=get_user_model().objects.get(pk=4)),
+        )
+
+        # Initially, no notifications
+
+        messages = common.models.NotificationMessage.objects.filter(
+            category='order.new_purchaseorder'
+        )
+
+        self.assertEqual(messages.count(), 0)
+
+        # Place the order
+        po.place_order()
+
+        # A notification should have been generated for user 4 (who is a member of group 3)
+        self.assertTrue(messages.filter(user__pk=4).exists())
+
+        # However *no* notification should have been generated for the creating user
+        self.assertFalse(messages.filter(user__pk=3).exists())
+
+    def test_metadata(self):
+        """Unit tests for the metadata field."""
+        for model in [PurchaseOrder, PurchaseOrderLineItem, PurchaseOrderExtraLine]:
+            p = model.objects.first()
+
+            # Setting metadata to something *other* than a dict will fail
+            with self.assertRaises(django_exceptions.ValidationError):
+                p.metadata = 'test'
+                p.save()
+
+            # Reset metadata to known state
+            p.metadata = {}
+
+            self.assertIsNone(p.get_metadata('test'))
+            self.assertEqual(p.get_metadata('test', backup_value=123), 123)
+
+            # Test update via the set_metadata() method
+            p.set_metadata('test', 3)
+            self.assertEqual(p.get_metadata('test'), 3)
+
+            for k in ['apple', 'banana', 'carrot', 'carrot', 'banana']:
+                p.set_metadata(k, k)
+
+            self.assertEqual(len(p.metadata.keys()), 4)
+
+
+class OrderUpdatedAtTest(TestCase):
+    """Tests to verify that the updated_at field is correctly maintained on all order types."""
+
+    def setUp(self):
+        """Set up objects for all three order types."""
+        self.supplier = Company.objects.filter(is_supplier=True).first()
+        self.customer = Company.objects.filter(is_customer=True).first()
+
+        self.po = PurchaseOrder.objects.create(
+            reference='PO-TEST-001', supplier=self.supplier
+        )
+        self.so = SalesOrder.objects.create(
+            reference='SO-TEST-001', customer=self.customer
+        )
+        self.ro = ReturnOrder.objects.create(
+            reference='RO-TEST-001', customer=self.customer
+        )
+
+        self.part = Part.objects.create(name='Test Part', description='Test Part')
+        self.stock_item = StockItem.objects.create(part=self.part, quantity=10)
+
+    def _refresh(self, instance):
+        """Return a fresh copy of the instance from the database."""
+        return instance.__class__.objects.get(pk=instance.pk)
+
+    def test_updated_at_set_on_save(self):
+        """updated_at should be populated after the order is saved."""
+        for instance in [self.po, self.so, self.ro]:
+            self.assertIsNotNone(self._refresh(instance).updated_at)
+
+    def test_updated_at_changes_on_save(self):
+        """updated_at should advance when the order is saved again."""
+        for instance in [self.po, self.so, self.ro]:
+            original = self._refresh(instance).updated_at
+
+            instance.description = 'Updated description'
+            instance.save()
+
+            refreshed = self._refresh(instance)
+            self.assertGreaterEqual(refreshed.updated_at, original)
+
+    def test_updated_at_on_extra_line_add(self):
+        """updated_at should advance on the parent order when an extra line is added."""
+        for instance, ExtraLine in [
+            (self.po, PurchaseOrderExtraLine),
+            (self.so, SalesOrderExtraLine),
+            (self.ro, ReturnOrderExtraLine),
+        ]:
+            before = self._refresh(instance).updated_at
+
+            ExtraLine.objects.create(order=instance, quantity=1)
+
+            after = self._refresh(instance).updated_at
+            self.assertGreaterEqual(after, before)
+
+    def test_updated_at_on_extra_line_update(self):
+        """updated_at should advance on the parent order when an extra line is updated."""
+        for instance, ExtraLine in [
+            (self.po, PurchaseOrderExtraLine),
+            (self.so, SalesOrderExtraLine),
+            (self.ro, ReturnOrderExtraLine),
+        ]:
+            line = ExtraLine.objects.create(order=instance, quantity=1)
+
+            before = self._refresh(instance).updated_at
+
+            line.quantity = 5
+            line.save()
+
+            after = self._refresh(instance).updated_at
+            self.assertGreaterEqual(after, before)
+
+    def test_updated_at_on_extra_line_delete(self):
+        """updated_at should advance on the parent order when an extra line is deleted."""
+        for instance, ExtraLine in [
+            (self.po, PurchaseOrderExtraLine),
+            (self.so, SalesOrderExtraLine),
+            (self.ro, ReturnOrderExtraLine),
+        ]:
+            line = ExtraLine.objects.create(order=instance, quantity=1)
+
+            before = self._refresh(instance).updated_at
+
+            line.delete()
+
+            after = self._refresh(instance).updated_at
+            self.assertGreaterEqual(after, before)
+
+    def test_updated_at_on_line_item_add(self):
+        """updated_at should advance on the parent order when a regular line item is added."""
+        before_po = self._refresh(self.po).updated_at
+        PurchaseOrderLineItem.objects.create(order=self.po, part=None, quantity=1)
+        self.assertGreaterEqual(self._refresh(self.po).updated_at, before_po)
+
+        before_so = self._refresh(self.so).updated_at
+        SalesOrderLineItem.objects.create(order=self.so, part=None, quantity=1)
+        self.assertGreaterEqual(self._refresh(self.so).updated_at, before_so)
+
+        before_ro = self._refresh(self.ro).updated_at
+        ReturnOrderLineItem.objects.create(
+            order=self.ro, item=self.stock_item, quantity=1
+        )
+        self.assertGreaterEqual(self._refresh(self.ro).updated_at, before_ro)
+
+    def test_updated_at_on_line_item_update(self):
+        """updated_at should advance on the parent order when a regular line item is updated."""
+        po_line = PurchaseOrderLineItem.objects.create(
+            order=self.po, part=None, quantity=1
+        )
+        so_line = SalesOrderLineItem.objects.create(
+            order=self.so, part=None, quantity=1
+        )
+        ro_line = ReturnOrderLineItem.objects.create(
+            order=self.ro, item=self.stock_item, quantity=1
+        )
+
+        for instance, line in [
+            (self.po, po_line),
+            (self.so, so_line),
+            (self.ro, ro_line),
+        ]:
+            before = self._refresh(instance).updated_at
+            line.quantity = 5
+            line.save()
+            self.assertGreaterEqual(self._refresh(instance).updated_at, before)
+
+    def test_updated_at_on_line_item_delete(self):
+        """updated_at should advance on the parent order when a regular line item is deleted."""
+        po_line = PurchaseOrderLineItem.objects.create(
+            order=self.po, part=None, quantity=1
+        )
+        so_line = SalesOrderLineItem.objects.create(
+            order=self.so, part=None, quantity=1
+        )
+        ro_line = ReturnOrderLineItem.objects.create(
+            order=self.ro, item=self.stock_item, quantity=1
+        )
+
+        for instance, line in [
+            (self.po, po_line),
+            (self.so, so_line),
+            (self.ro, ro_line),
+        ]:
+            before = self._refresh(instance).updated_at
+            line.delete()
+            self.assertGreaterEqual(self._refresh(instance).updated_at, before)

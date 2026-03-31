@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load inventree_extras %}
+
+{% block page_title %}
+{% inventree_title %} | {% trans "Page Not Found" %}
+{% endblock page_title %}
+
+{% block content %}
+<h3>{% trans "Page Not Found" %}</h3>
+{% trans "The requested page does not exist" %}
+{% endblock content %}

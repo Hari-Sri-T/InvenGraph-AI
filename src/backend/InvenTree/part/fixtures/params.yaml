@@ -1,0 +1,114 @@
+# Create some PartParameter templtes
+
+- model: common.parametertemplate
+  pk: 1
+  fields:
+    name: Length
+    units: mm
+    model_type:
+    - part
+    - part
+
+- model: common.parametertemplate
+  pk: 2
+  fields:
+    name: Width
+    units: mm
+    model_type:
+    - part
+    - part
+
+- model: common.parametertemplate
+  pk: 3
+  fields:
+    name: Thickness
+    units: mm
+    model_type:
+    - part
+    - part
+
+# Add some parameters to parts (requires part.yaml)
+- model: common.parameter
+  pk: 1
+  fields:
+    model_id: 1
+    model_type:
+    - part
+    - part
+    template: 1
+    data: 4
+
+- model: common.parameter
+  pk: 2
+  fields:
+    model_id: 2
+    model_type:
+    - part
+    - part
+    template: 1
+    data: 12
+
+- model: common.parameter
+  pk: 3
+  fields:
+    model_id: 3
+    model_type:
+    - part
+    - part
+    template: 1
+    data: 12
+
+- model: common.parameter
+  pk: 4
+  fields:
+    model_id: 3
+    model_type:
+    - part
+    - part
+    template: 2
+    data: 12
+
+- model: common.parameter
+  pk: 5
+  fields:
+    model_id: 3
+    model_type:
+    - part
+    - part
+    template: 3
+    data: 12
+
+- model: common.parameter
+  pk: 6
+  fields:
+    model_id: 100
+    model_type:
+    - part
+    - part
+    template: 3
+    data: 12
+
+- model: common.parameter
+  pk: 7
+  fields:
+    model_id: 100
+    model_type:
+    - part
+    - part
+    template: 1
+    data: 12
+
+# Add some template parameters to categories (requires category.yaml)
+- model: part.PartCategoryParameterTemplate
+  pk: 1
+  fields:
+    category: 7
+    template: 1
+    default_value: '2.8'
+
+- model: part.PartCategoryParameterTemplate
+  pk: 2
+  fields:
+    category: 7
+    template: 3
+    default_value: '0.5'

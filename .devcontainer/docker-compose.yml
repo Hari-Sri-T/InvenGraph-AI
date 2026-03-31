@@ -1,0 +1,46 @@
+services:
+  db:
+    image: postgres:15
+    restart: unless-stopped
+    ports:
+      - 5432/tcp
+    volumes:
+      - ../dev-db/:/var/lib/postgresql/data:z
+    environment:
+      POSTGRES_DB: inventree
+      POSTGRES_USER: inventree_user
+      POSTGRES_PASSWORD: inventree_password
+
+  redis:
+    image: redis:7.0
+    restart: always
+    ports:
+      - 6379
+
+  inventree:
+    ports:
+      - 8000:8000
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - ../:/home/inventree:z
+      - /tmp/.X11-unix:/tmp/.X11-unix
+
+    environment:
+      INVENTREE_DB_ENGINE: postgresql
+      INVENTREE_DB_NAME: inventree
+      INVENTREE_DB_HOST: db
+      INVENTREE_DB_USER: inventree_user
+      INVENTREE_DB_PASSWORD: inventree_password
+      INVENTREE_DEBUG: True
+      INVENTREE_CACHE_HOST: redis
+      INVENTREE_CACHE_PORT: 6379
+      INVENTREE_PLUGINS_ENABLED: True
+      INVENTREE_SITE_URL: http://localhost:8000
+      INVENTREE_CORS_ORIGIN_ALLOW_ALL: True
+      INVENTREE_PY_ENV: /home/inventree/dev/venv
+      INVENTREE_DEVCONTAINER: True
+
+    depends_on:
+      - db

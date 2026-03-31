@@ -1,0 +1,75 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "InvenTree Server",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/backend/InvenTree/manage.py",
+      "args": [
+        "runserver",
+        "0.0.0.0:8000", // expose server in network (useful for testing with mobile app)
+        // "--noreload" // disable auto-reload
+      ],
+      "django": true,
+      "justMyCode": true
+    },
+    {
+      "name": "InvenTree Server - Tests",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/backend/InvenTree/manage.py",
+      "args": [
+        "test",
+        // "part.test_api.PartCategoryAPITest", // run only a specific test
+      ],
+      "django": true,
+      "justMyCode": true
+    },
+    {
+      "name": "InvenTree Server - 3rd party",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/backend/InvenTree/manage.py",
+      "args": [
+        "runserver",
+        "0.0.0.0:8000"
+      ],
+      "django": true,
+      "justMyCode": false
+    },
+    {
+      "name": "InvenTree invoke schema",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/.venv/lib/python3.11/site-packages/invoke/__main__.py",
+      "cwd": "${workspaceFolder}",
+      "args": [
+        "dev.schema","--ignore-warnings"
+      ],
+      "justMyCode": false
+    },
+    {
+      "name": "schema generation",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/backend/InvenTree/manage.py",
+      "args": [
+        "schema",
+        "--file","src/frontend/schema.yml"
+      ],
+      "django": true,
+      "justMyCode": false
+    },
+    {
+      "name": "InvenTree Frontend - Vite",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/src/frontend"
+    }
+  ]
+}

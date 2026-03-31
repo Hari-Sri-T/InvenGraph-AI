@@ -1,0 +1,19 @@
+{% extends "skeleton.html" %}
+{% load static %}
+{% load inventree_extras %}
+{% load i18n %}
+
+{% block head %}
+<meta http-equiv="refresh" content="30">
+{% endblock head %}
+
+{% block page_title %}
+{% trans 'Site is in Maintenance' %}
+{% endblock page_title %}
+
+{% block body %}
+<h3>{% block body_title %}{% trans 'Site is in Maintenance' %}{% endblock body_title %}</h3>
+{% block content %}
+{% trans 'The site is currently in maintenance and should be up again soon!' %}
+{% endblock content %}
+{% endblock body %}

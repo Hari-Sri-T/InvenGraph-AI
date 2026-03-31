@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block tabs %}
+{{ super() }}
+
+{% endblock tabs %}
+
+{% block site_nav %}
+{% endblock site_nav %}
+
+{% block content %}
+<style>
+  h1 {
+    font-family: Arial, Helvetica, sans-serif;
+    display: block;
+  }
+</style>
+
+<section class="mdx-container">
+  <div class="md-grid md-typeset">
+    <div class="mdx-hero"></div>
+      <h1>
+        <i class="ti ti-search"></i> Page not found
+      </h1>
+  </div>
+</section>
+
+{% endblock content %}

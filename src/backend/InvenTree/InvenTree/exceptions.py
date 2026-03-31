@@ -1,0 +1,160 @@
+"""Custom exception handling for the DRF API."""
+
+# -*- coding: utf-8 -*-
+
+import sys
+import traceback
+from typing import Optional
+
+from django.conf import settings
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils.translation import gettext_lazy as _
+
+import structlog
+from rest_framework import serializers
+from rest_framework.exceptions import ValidationError as DRFValidationError
+from rest_framework.response import Response
+
+logger = structlog.get_logger('inventree')
+
+
+def log_error(
+    path,
+    error_name=None,
+    error_info=None,
+    error_data=None,
+    scope: Optional[str] = None,
+    plugin: Optional[str] = None,
+):
+    """Log an error to the database.
+
+    - Uses python exception handling to extract error details
+
+    Arguments:
+        path: The 'path' (most likely a URL) associated with this error (optional)
+        error_name: The name of the error (optional, overrides 'kind')
+        error_info: The error information (optional, overrides 'info')
+        error_data: The error data (optional, overrides 'data')
+        scope: The scope of the error (optional)
+        plugin: The plugin name associated with this error (optional)
+    """
+    import InvenTree.ready
+
+    if any([
+        InvenTree.ready.isImportingData(),
+        InvenTree.ready.isRunningMigrations(),
+        InvenTree.ready.isRunningBackup(),
+    ]):
+        logger.exception('Exception occurred during import, migration, or backup')
+        return
+
+    if not path:
+        path = ''
+
+    kind, info, data = sys.exc_info()
+
+    # Check if the error is on the ignore list
+    if kind in settings.IGNORED_ERRORS:
+        return
+
+    kind = error_name or getattr(kind, '__name__', 'Unknown Error')
+
+    if error_info:
+        info = error_info
+
+    if error_data:
+        data = error_data
+    else:
+        try:
+            formatted_exception = traceback.format_exception(kind, info, data)
+            data = '\n'.join(formatted_exception)
+        except AttributeError:
+            data = 'No traceback information available'
+
+    # Log error to stderr
+    logger.error(info)
+
+    if plugin:
+        # If a plugin is specified, prepend it to the path
+        path = f'plugin.{plugin}.{path}'
+
+    if scope:
+        # If a scope is specified, prepend it to the path
+        path = f'{scope}:{path}'
+
+    # Ensure the error information does not exceed field size limits
+    path = path[:200]
+    kind = kind[:128]
+
+    try:
+        from error_report.models import Error
+
+        Error.objects.create(kind=kind, info=info or '', data=data or '', path=path)
+    except Exception:
+        # Not much we can do if logging the error throws a db exception
+        logger.exception('Failed to log exception to database')
+
+
+def exception_handler(exc, context):
+    """Custom exception handler for DRF framework.
+
+    Ref: https://www.django-rest-framework.org/api-guide/exceptions/#custom-exception-handling
+    Catches any errors not natively handled by DRF, and re-throws as an error DRF can handle.
+
+    If sentry error reporting is enabled, we will also provide the original exception to sentry.io
+    """
+    import rest_framework.views as drfviews
+
+    import InvenTree.sentry
+
+    response = None
+
+    # Pass exception to sentry.io handler
+    try:
+        InvenTree.sentry.report_exception(exc)
+    except Exception:
+        # If sentry.io fails, we don't want to crash the server!
+        pass
+
+    # Catch any django validation error, and re-throw a DRF validation error
+    if isinstance(exc, DjangoValidationError):
+        exc = DRFValidationError(detail=serializers.as_serializer_error(exc))
+
+    # Default to the built-in DRF exception handler
+    response = drfviews.exception_handler(exc, context)
+
+    if response is None:
+        # DRF handler did not provide a default response for this exception
+
+        if settings.TESTING:
+            # If in TESTING mode, re-throw the exception for traceback
+            raise exc
+        elif settings.DEBUG:
+            # If in DEBUG mode, provide error information in the response
+            error_detail = str(exc)
+        else:
+            error_detail = _('Error details can be found in the admin panel')
+
+        request = context.get('request')
+        path = request.path if request else ''
+
+        response_data = {
+            'error': type(exc).__name__,
+            'error_class': str(type(exc)),
+            'detail': error_detail,
+            'path': path,
+            'status_code': 500,
+        }
+
+        response = Response(response_data, status=500)
+        log_error(path)
+
+    if response is not None:
+        # Convert errors returned under the label '__all__' to 'non_field_errors'
+        data = response.data
+
+        if data and '__all__' in data:
+            data['non_field_errors'] = data['__all__']
+            del data['__all__']
+
+    return response

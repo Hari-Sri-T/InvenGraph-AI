@@ -1,0 +1,96 @@
+# Create some PartCategory objects
+
+- model: part.partcategory
+  pk: 1
+  fields:
+    name: Electronics
+    description: Electronic components
+    parent: null
+    default_location: 1
+    tree_id: 1
+    level: 0
+    lft: 1
+    rght: 12
+
+- model: part.partcategory
+  pk: 2
+  fields:
+    name: Resistors
+    description: Resistors
+    parent: 1
+    default_location: null
+    tree_id: 1
+    level: 1
+    lft: 10
+    rght: 11
+
+- model: part.partcategory
+  pk: 3
+  fields:
+    name: Capacitors
+    description: Capacitors
+    parent: 1
+    default_location: null
+    level: 1
+    tree_id: 1
+    lft: 2
+    rght: 3
+
+- model: part.partcategory
+  pk: 4
+  fields:
+    name: IC
+    description: Integrated Circuits
+    parent: 1
+    default_location: null
+    tree_id: 1
+    level: 1
+    lft: 4
+    rght: 9
+
+- model: part.partcategory
+  pk: 5
+  fields:
+    name: MCU
+    description: Microcontrollers
+    parent: 4
+    default_location: null
+    tree_id: 1
+    level: 2
+    lft: 5
+    rght: 6
+
+- model: part.partcategory
+  pk: 6
+  fields:
+    name: Transceivers
+    description: Communication interfaces
+    parent: 4
+    default_location: null
+    tree_id: 1
+    level: 2
+    lft: 7
+    rght: 8
+
+- model: part.partcategory
+  pk: 7
+  fields:
+    name: Mechanical
+    description: Mechanical components
+    default_location: null
+    tree_id: 2
+    level: 0
+    lft: 1
+    rght: 4
+
+- model: part.partcategory
+  pk: 8
+  fields:
+    name: Fasteners
+    description: Screws, bolts, etc
+    parent: 7
+    default_location: 5
+    tree_id: 2
+    level: 1
+    lft: 2
+    rght: 3

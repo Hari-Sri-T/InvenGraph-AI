@@ -1,0 +1,241 @@
+"""General filters for InvenTree."""
+
+from datetime import datetime
+
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.utils import timezone
+from django.utils.timezone import make_aware
+
+import django_filters.rest_framework.backends as drf_backend
+import django_filters.rest_framework.filters as rest_filters
+from rest_framework import filters
+
+import InvenTree.helpers
+
+
+class InvenTreeDateFilter(rest_filters.DateFilter):
+    """Custom DateFilter class which handles timezones correctly."""
+
+    def filter(self, qs, value):
+        """Override the filter method to handle timezones correctly."""
+        if settings.USE_TZ and value is not None:
+            tz = timezone.get_current_timezone()
+            value = datetime(value.year, value.month, value.day)
+            value = make_aware(value, timezone=tz)
+
+        return super().filter(qs, value)
+
+
+class InvenTreeSearchFilter(filters.SearchFilter):
+    """Custom search filter which allows adjusting of search terms dynamically."""
+
+    def get_search_fields(self, view, request):
+        """Return a set of search fields for the request, adjusted based on request params.
+
+        The following query params are available to 'augment' the search (in decreasing order of priority)
+        - search_notes: If True, 'notes' is added to the search_fields if it isn't already present
+        - search_regex: If True, search is performed on 'regex' comparison
+        """
+        search_notes = InvenTree.helpers.str2bool(
+            request.query_params.get('search_notes', False)
+        )
+
+        search_fields = super().get_search_fields(view, request)
+
+        if search_notes and 'notes' not in search_fields:
+            # don't modify existing list, create a new object so further queries aren't affected
+            search_fields = [*search_fields, 'notes']
+
+        regex = InvenTree.helpers.str2bool(
+            request.query_params.get('search_regex', False)
+        )
+
+        fields = []
+
+        if search_fields:
+            for field in search_fields:
+                if regex:
+                    field = '$' + field
+
+                fields.append(field)
+
+        return fields
+
+    def get_search_terms(self, request):
+        """Return the search terms for this search request.
+
+        Depending on the request parameters, we may "augment" these somewhat
+        """
+        whole = InvenTree.helpers.str2bool(
+            request.query_params.get('search_whole', False)
+        )
+
+        terms = []
+
+        search_terms = super().get_search_terms(request)
+
+        if search_terms:
+            for term in search_terms:
+                term = term.strip()
+
+                if not term:
+                    # Ignore blank inputs
+                    continue
+
+                if whole:
+                    # Wrap the search term to enable word-boundary matching
+                    term = r'\y' + term + r'\y'
+
+                terms.append(term)
+
+        return terms
+
+
+class InvenTreeOrderingFilter(filters.OrderingFilter):
+    """Custom OrderingFilter class which allows aliased filtering of related fields.
+
+    To use, simply specify this filter in the "filter_backends" section.
+
+    filter_backends = [
+        InvenTreeOrderingFilter,
+    ]
+
+    Then, specify a ordering_field_aliases attribute:
+
+    ordering_field_aliases = {
+        'name': 'part__part__name',
+        'SKU': 'part__SKU',
+    }
+    """
+
+    def get_ordering(self, request, queryset, view):
+        """Override ordering for supporting aliases."""
+        ordering = list(super().get_ordering(request, queryset, view) or [])
+
+        aliases = getattr(view, 'ordering_field_aliases', None)
+        lookup_field = getattr(view, 'lookup_field', 'pk')
+        lookup_reversed = len(ordering) > 0 and ordering[-1].startswith('-')
+
+        # Attempt to map ordering fields based on provided aliases
+        if ordering is not None and aliases is not None:
+            """Ordering fields should be mapped to separate fields."""
+
+            ordering_initial = ordering
+            ordering = []
+
+            for field in ordering_initial:
+                field_reversed = field.startswith('-')
+                if field_reversed:
+                    field = field[1:]
+
+                # Are aliases defined for this field?
+                alias = aliases.get(field, field)
+
+                """
+                Potentially, a single field could be "aliased" to multiple field,
+
+                (For example to enforce a particular ordering sequence)
+
+                e.g. to filter first by the integer value...
+
+                ordering_field_aliases = {
+                    "reference": ["integer_ref", "reference"]
+                }
+
+                """
+
+                if type(alias) is str:
+                    alias = [alias]
+                elif type(alias) in [list, tuple]:
+                    pass
+                else:
+                    # Unsupported alias type
+                    continue
+
+                for a in alias:
+                    if field_reversed:
+                        a = '-' + a
+
+                    ordering.append(a)
+
+        # Ensure that any API filtering appends the primary-key field
+        # This is to prevent "ambiguous ordering" errors across pagination boundaries
+        # Ref: https://github.com/inventree/InvenTree/issues/11442
+        if lookup_field and not any(
+            field in ordering for field in [lookup_field, f'-{lookup_field}']
+        ):
+            if lookup_reversed:
+                ordering.append(f'-{lookup_field}')
+            else:
+                ordering.append(lookup_field)
+
+        return ordering
+
+
+class NumberOrNullFilter(rest_filters.NumberFilter):
+    """Custom NumberFilter that allows filtering by numeric values or the literal string "null".
+
+    This allows matching either numeric values or NULL values in the database.
+
+    Example Usage:
+        ?my_field=20     → filters rows where my_field=20
+        ?my_field=null   → filters rows where my_field IS NULL
+    """
+
+    def filter(self, qs, value):
+        """Return queryset filtered by value or NULL if 'null' is passed."""
+        if value == 'null':
+            return qs.filter(**{self.field_name: None})
+        return super().filter(qs, value)
+
+    @property
+    def field(self):
+        """Allow 'null' as valid input in filter parameters."""
+        field = super().field
+        original_clean = field.clean
+
+        def custom_clean(val):
+            """Custom clean function for filter input values."""
+            if InvenTree.helpers.isNull(val) and val is not None:
+                return 'null'
+            return original_clean(val)
+
+        field.clean = custom_clean
+        return field
+
+
+class NumericInFilter(rest_filters.BaseInFilter):
+    """A filter that only accepts numeric values for 'in' queries.
+
+    This filter ensures that all provided values can be converted to integers
+    before passing them to the parent filter. Any non-numeric values will
+    be ignored (or optionally, a ValidationError can be raised).
+    """
+
+    def filter(self, qs, value):
+        """Filter the queryset based on numeric values only."""
+        if not value:
+            return qs
+
+        # Check that all values are numeric
+        numeric_values = []
+        for v in value:
+            try:
+                numeric_values.append(int(v))
+            except (ValueError, TypeError):
+                raise ValidationError(f"'{v}' is not a valid number")
+
+        if not numeric_values:
+            return qs
+
+        return super().filter(qs, numeric_values)
+
+
+ORDER_FILTER = [drf_backend.DjangoFilterBackend, InvenTreeOrderingFilter]
+
+SEARCH_ORDER_FILTER = [
+    drf_backend.DjangoFilterBackend,
+    InvenTreeSearchFilter,
+    InvenTreeOrderingFilter,
+]

@@ -1,0 +1,419 @@
+"""Unit tests for base mixins for plugins."""
+
+from collections import OrderedDict, defaultdict
+from unittest.mock import MagicMock, patch
+
+from django.conf import settings
+from django.test import TestCase
+from django.urls import include, path, re_path
+
+import requests_mock
+
+from InvenTree.unit_test import InvenTreeTestCase
+from plugin import InvenTreePlugin
+from plugin.helpers import MixinNotImplementedError
+from plugin.mixins import (
+    APICallMixin,
+    AppMixin,
+    NavigationMixin,
+    SettingsMixin,
+    UrlsMixin,
+)
+from plugin.urls import PLUGIN_BASE
+
+
+class BaseMixinDefinition:
+    """Mixin to test the meta functions of all mixins."""
+
+    def test_mixin_name(self):
+        """Test that the mixin registers itself correctly."""
+        # mixin name
+        self.assertIn(
+            self.MIXIN_NAME,
+            {item['key'] for item in self.mixin.registered_mixins.values()},
+        )
+        # human name
+        self.assertIn(
+            self.MIXIN_HUMAN_NAME,
+            {item['human_name'] for item in self.mixin.registered_mixins.values()},
+        )
+
+
+class SettingsMixinTest(BaseMixinDefinition, InvenTreeTestCase):
+    """Tests for SettingsMixin."""
+
+    MIXIN_HUMAN_NAME = 'Settings'
+    MIXIN_NAME = 'settings'
+    MIXIN_ENABLE_CHECK = 'has_settings'
+
+    TEST_SETTINGS = {'SETTING1': {'default': '123'}}
+
+    def setUp(self):
+        """Setup for all tests."""
+
+        class SettingsCls(SettingsMixin, InvenTreePlugin):
+            SETTINGS = self.TEST_SETTINGS
+
+        self.mixin = SettingsCls()
+
+        class NoSettingsCls(SettingsMixin, InvenTreePlugin):
+            pass
+
+        self.mixin_nothing = NoSettingsCls()
+
+        super().setUp()
+
+    def test_function(self):
+        """Test that the mixin functions."""
+        # settings variable
+        self.assertEqual(self.mixin.settings, self.TEST_SETTINGS)
+
+        # calling settings
+        # not existing
+        self.assertEqual(self.mixin.get_setting('ABCD'), '')
+        self.assertEqual(self.mixin_nothing.get_setting('ABCD'), '')
+
+        # right setting
+        self.mixin.set_setting('SETTING1', '12345', self.user)
+        self.assertEqual(self.mixin.get_setting('SETTING1'), '12345')
+
+        # no setting
+        self.assertEqual(self.mixin_nothing.get_setting(''), '')
+
+
+class UrlsMixinTest(BaseMixinDefinition, TestCase):
+    """Tests for UrlsMixin."""
+
+    MIXIN_HUMAN_NAME = 'URLs'
+    MIXIN_NAME = 'urls'
+    MIXIN_ENABLE_CHECK = 'has_urls'
+
+    def setUp(self):
+        """Setup for all tests."""
+
+        class UrlsCls(UrlsMixin, InvenTreePlugin):
+            def test():
+                return 'ccc'
+
+            URLS = [path('testpath', test, name='test')]
+
+        self.mixin = UrlsCls()
+
+        class NoUrlsCls(UrlsMixin, InvenTreePlugin):
+            pass
+
+        self.mixin_nothing = NoUrlsCls()
+
+    def test_function(self):
+        """Test that the mixin functions."""
+        plg_name = self.mixin.plugin_name()
+
+        # base_url
+        target_url = f'{PLUGIN_BASE}/{plg_name}/'
+        self.assertEqual(self.mixin.base_url, target_url)
+
+        # urlpattern
+        target_pattern = re_path(
+            f'^{plg_name}/', include((self.mixin.urls, plg_name)), name=plg_name
+        )
+
+        # resolve the view
+        self.assertEqual(target_pattern.resolve('/testpath').func(), 'ccc')
+        self.assertEqual(target_pattern.reverse('test'), 'testpath')
+
+        # no url
+        self.assertIsNone(self.mixin_nothing.urls)
+        self.assertIsNone(self.mixin_nothing.urlpatterns)
+
+        # internal name
+        self.assertEqual(self.mixin.internal_name, f'plugin:{self.mixin.slug}:')
+
+
+class AppMixinTest(BaseMixinDefinition, TestCase):
+    """Tests for AppMixin."""
+
+    MIXIN_HUMAN_NAME = 'App registration'
+    MIXIN_NAME = 'app'
+    MIXIN_ENABLE_CHECK = 'has_app'
+
+    def setUp(self):
+        """Setup for all tests."""
+
+        class TestCls(AppMixin, InvenTreePlugin):
+            pass
+
+        self.mixin = TestCls()
+
+    def test_function(self):
+        """Test that the sample plugin registers in settings."""
+        self.assertIn('plugin.samples.integration', settings.INSTALLED_APPS)
+
+    def test_deactivate_nested_plugin_path(self):
+        """Test that _deactivate_mixin uses app_name (not plugin_path) for model deregistration.
+
+        External plugins with nested module paths (e.g. "purchase_quotation.purchase_quotation")
+        have plugin_path != app_name. Django registers models under app_name (the last component),
+        so using the full plugin_path to look up apps.all_models would access the wrong key
+        in the defaultdict and raise KeyError on .pop().
+        """
+        # Simulate a nested plugin path like an external plugin installed via:
+        #   entry_points={"inventree_plugins": [
+        #       "PurchaseQuotationPlugin = purchase_quotation.plugin:PurchaseQuotationPlugin"
+        #   ]}
+        # where the package structure is purchase_quotation/purchase_quotation/
+        nested_plugin_path = 'purchase_quotation.purchase_quotation'
+        app_name = 'purchase_quotation'  # Django registers models under this
+
+        # Set up a mock registry with the nested plugin path
+        mock_registry = MagicMock()
+        mock_registry.installed_apps = [nested_plugin_path]
+
+        # Create a fake model
+        mock_model = MagicMock()
+        mock_model._meta.model_name = 'purchasequotation'
+
+        # Create a mock app_config that returns our fake model
+        mock_app_config = MagicMock()
+        mock_app_config.get_models.return_value = [mock_model]
+
+        # Set up apps.all_models with the model registered under app_name
+        # (this is how Django actually stores it)
+        fake_all_models = defaultdict(OrderedDict)
+        fake_all_models[app_name]['purchasequotation'] = mock_model
+
+        with (
+            patch(
+                'plugin.base.integration.AppMixin.apps.get_app_config',
+                return_value=mock_app_config,
+            ),
+            patch('plugin.base.integration.AppMixin.apps.all_models', fake_all_models),
+        ):
+            # This should NOT raise KeyError - the fix ensures we use
+            # app_name (the last path component) instead of the full plugin_path
+            AppMixin._deactivate_mixin(mock_registry, force_reload=False)
+
+        # Verify the model was removed from the registry
+        self.assertNotIn('purchasequotation', fake_all_models.get(app_name, {}))
+        # Verify the full nested path was NOT used as a key
+        # (defaultdict would have created an empty entry if accessed)
+        self.assertNotIn(nested_plugin_path, fake_all_models)
+
+
+class NavigationMixinTest(BaseMixinDefinition, TestCase):
+    """Tests for NavigationMixin."""
+
+    MIXIN_HUMAN_NAME = 'Navigation Links'
+    MIXIN_NAME = 'navigation'
+    MIXIN_ENABLE_CHECK = 'has_navigation'
+
+    def setUp(self):
+        """Setup for all tests."""
+
+        class NavigationCls(NavigationMixin, InvenTreePlugin):
+            NAVIGATION = [{'name': 'aa', 'link': 'plugin:test:test_view'}]
+            NAVIGATION_TAB_NAME = 'abcd1'
+
+        self.mixin = NavigationCls()
+
+        class NothingNavigationCls(NavigationMixin, InvenTreePlugin):
+            pass
+
+        self.nothing_mixin = NothingNavigationCls()
+
+    def test_function(self):
+        """Test that a correct configuration functions."""
+        # check right configuration
+        self.assertEqual(
+            self.mixin.navigation, [{'name': 'aa', 'link': 'plugin:test:test_view'}]
+        )
+
+        # navigation name
+        self.assertEqual(self.mixin.navigation_name, 'abcd1')
+        self.assertEqual(self.nothing_mixin.navigation_name, '')
+
+    def test_fail(self):
+        """Test that wrong links fail."""
+        with self.assertRaises(NotImplementedError):
+
+            class NavigationCls(NavigationMixin, InvenTreePlugin):
+                NAVIGATION = ['aa', 'aa']
+
+            NavigationCls()
+
+
+class APICallMixinTest(BaseMixinDefinition, TestCase):
+    """Tests for APICallMixin."""
+
+    MIXIN_HUMAN_NAME = 'API calls'
+    MIXIN_NAME = 'api_call'
+    MIXIN_ENABLE_CHECK = 'has_api_call'
+
+    def setUp(self):
+        """Setup for all tests."""
+
+        class MixinCls(APICallMixin, SettingsMixin, InvenTreePlugin):
+            NAME = 'Sample API Caller'
+
+            SETTINGS = {
+                'API_TOKEN': {
+                    'name': 'API Token',
+                    'protected': True,
+                    'default': 'sample-free-v1',
+                },
+                'API_URL': {
+                    'name': 'External URL',
+                    'description': 'Where is your API located?',
+                    'default': 'https://api.example.com',
+                },
+            }
+
+            API_URL_SETTING = 'API_URL'
+            API_TOKEN_SETTING = 'API_TOKEN'
+            API_TOKEN = 'x-api-key'
+
+            @property
+            def api_url(self):
+                """Override API URL for this test."""
+                return 'https://api.example.com'
+
+            def get_external_url(self, simple: bool = True):
+                """Returns data from the sample endpoint."""
+                return self.api_call('orgs/inventree', simple_response=simple)
+
+        self.mixin = MixinCls()
+
+        class WrongCLS(APICallMixin, InvenTreePlugin):
+            pass
+
+        self.mixin_wrong = WrongCLS()
+
+        class WrongCLS2(APICallMixin, InvenTreePlugin):
+            API_URL_SETTING = 'test'
+
+        self.mixin_wrong2 = WrongCLS2()
+
+    def test_base_setup(self):
+        """Test that the base settings work."""
+        # check init
+        self.assertTrue(self.mixin.has_api_call)
+        # api_url
+        self.assertEqual('https://api.example.com', self.mixin.api_url)
+
+        # api_headers
+        headers = self.mixin.api_headers
+        self.assertEqual(headers['Content-Type'], 'application/json')
+
+    def test_args(self):
+        """Test that building up args work."""
+        # api_build_url_args
+        # 1 arg
+        result = self.mixin.api_build_url_args({'a': 'abc123'})
+        self.assertEqual(result, '?a=abc123')
+        # non string arg
+        result = self.mixin.api_build_url_args({'a': 1})
+        self.assertEqual(result, '?a=1')
+        # more args
+        result = self.mixin.api_build_url_args({'a': 'b', 'c': 42})
+        self.assertEqual(result, '?a=b&c=42')
+        # list args
+        result = self.mixin.api_build_url_args({'a': 'b', 'c': ['d', 'efgh', 1337]})
+        self.assertEqual(result, '?a=b&c=d,efgh,1337')
+
+    @requests_mock.Mocker()
+    def test_api_call(self, m: requests_mock.Mocker):
+        """Test that api calls work."""
+        # Set up mock responses
+        m.get(
+            'https://api.example.com/orgs/inventree',
+            json={
+                'login': 'inventree',
+                'email': 'inventree',
+                'name': 'InvenTree',
+                'twitter_username': 'inventree',
+            },
+            status_code=200,
+        )
+        m.post(
+            'https://api.example.com/users/',
+            json={'name': 'morpheus', 'job': 'leader'},
+            status_code=201,
+            headers={
+                'Authorization': 'x-api-key sample-free-v1',
+                'Content-Type': 'application/json',
+            },
+        )
+        m.get(
+            'https://api.example.com/repos/inventree/InvenTree/stargazers?page=2',
+            json={'sample': True},
+            status_code=200,
+        )
+
+        # api_call
+        result = self.mixin.get_external_url()
+        self.assertTrue(result)
+
+        for key in ['login', 'email', 'name', 'twitter_username']:
+            self.assertIn(key, result)
+
+        # api_call without json conversion
+        result = self.mixin.get_external_url(False)
+        self.assertTrue(result)
+        self.assertTrue(result.ok)
+
+        # Set API TOKEN
+        self.mixin.set_setting('API_TOKEN', 'sample-free-v1')
+        # api_call with post and data
+        result = self.mixin.api_call(
+            'https://api.example.com/users/',
+            json={'name': 'morpheus', 'job': 'leader'},
+            method='POST',
+            endpoint_is_url=True,
+        )
+
+        self.assertTrue(result)
+        self.assertNotIn('error', result)
+        assert result is not None
+        self.assertEqual(result['name'], 'morpheus')
+
+        # api_call with endpoint with leading slash
+        result = self.mixin.api_call('/orgs/inventree', simple_response=False)
+        self.assertTrue(result)
+        self.assertTrue(result.ok)
+
+        # api_call with filter - this errors out the mocker if not created correctly
+        result = self.mixin.api_call(
+            'repos/inventree/InvenTree/stargazers', url_args={'page': '2'}
+        )
+        self.assertTrue(result)
+
+    @requests_mock.Mocker()
+    def test_function_errors(self, m: requests_mock.Mocker):
+        """Test function errors."""
+        # Set up mock responses
+        m.get('https://api.example.com/orgs/inventree', status_code=404)
+        m.post('https://api.example.com/api/users/', status_code=400)
+
+        # wrongly defined plugins should not load
+        with self.assertRaises(MixinNotImplementedError):
+            self.mixin_wrong.has_api_call()
+
+        # cover wrong token setting
+        with self.assertRaises(MixinNotImplementedError):
+            self.mixin_wrong2.has_api_call()
+
+        # Too many data arguments
+        with self.assertRaises(ValueError):
+            self.mixin.api_call(
+                'https://api.example.com/api/users/', json={'a': 1}, data={'a': 1}
+            )
+
+        # Sending a request with a wrong data format should result in 400
+        result = self.mixin.api_call(
+            'https://api.example.com/api/users/',
+            data={'name': 'morpheus', 'job': 'leader'},
+            method='POST',
+            endpoint_is_url=True,
+            simple_response=False,
+        )
+
+        self.assertEqual(result.status_code, 400)

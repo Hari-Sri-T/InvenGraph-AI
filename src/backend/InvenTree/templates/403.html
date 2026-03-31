@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load inventree_extras %}
+
+{% block page_title %}
+{% inventree_title %} | {% trans "Permission Denied" %}
+{% endblock page_title %}
+
+{% block content %}
+<h3>{% trans "Permission Denied" %}</h3>
+{% trans "You do not have permission to view this page." %}
+{% endblock content %}

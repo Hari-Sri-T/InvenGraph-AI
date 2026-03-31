@@ -1,0 +1,70 @@
+# Supplier Parts
+
+# M2x4 LPHS from ACME
+- model: company.supplierpart
+  pk: 1
+  fields:
+    part: 1
+    supplier: 1
+    SKU: 'ACME0001'
+
+- model: company.supplierpart
+  pk: 2
+  fields:
+    part: 1
+    supplier: 1
+    SKU: 'ACME0002'
+
+- model: company.supplierpart
+  pk: 3
+  fields:
+    part: 1
+    supplier: 1
+    SKU: 'ACME0003'
+
+# Widget purchaseable from ACME
+- model: company.supplierpart
+  pk: 100
+  fields:
+    part: 25
+    supplier: 1
+    SKU: 'ACME-WIDGET'
+
+# Widget purchaseable from Zerg
+- model: company.supplierpart
+  pk: 101
+  fields:
+    part: 25
+    supplier: 2
+    SKU: 'ZERG-WIDGET'
+
+# M2x4 LPHS from Zerg Corp
+- model: company.supplierpart
+  pk: 7
+  fields:
+    part: 1
+    supplier: 3
+    SKU: 'ZERGLPHS'
+
+- model: company.supplierpart
+  pk: 4
+  fields:
+    part: 2
+    supplier: 2
+    SKU: 'ZERGM312'
+
+- model: company.supplierpart
+  pk: 5
+  fields:
+    part: 4
+    supplier: 2
+    SKU: 'R_4K7_0603'
+
+- model: company.supplierpart
+  pk: 6
+  fields:
+    part: 4
+    supplier: 2
+    SKU: 'R_4K7_0603.100PCK'
+    pack_quantity: '100'
+    pack_quantity_native: 100
