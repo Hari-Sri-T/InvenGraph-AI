@@ -1,0 +1,68 @@
+{% load static %}
+{% load i18n %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AI-First Logistics Management System">
+    <title>{% block title %}AI Logistics{% endblock %} - InvenTree</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'ai-primary': '#3B82F6',
+                        'ai-secondary': '#10B981',
+                        'ai-warning': '#F59E0B',
+                        'ai-danger': '#EF4444',
+                        'ai-info': '#6366F1',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.5/dist/cdn.min.js"></script>
+    
+    <!-- Chart.js for analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'ailms/css/custom.css' %}">
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-50" data-user-id="{{ user.id }}" data-username="{{ user.username }}" data-permissions='{{ user_permissions|safe }}'>
+    <!-- Skip Navigation Link for Accessibility -->
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded">
+        {% trans "Skip to main content" %}
+    </a>
+    
+    <!-- Navigation -->
+    {% include 'ailms/components/navbar.html' %}
+    
+    <!-- Main Content -->
+    <main id="main-content" class="container mx-auto px-4 py-6">
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Notification Container -->
+    <div id="notification-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
+    
+    <!-- JavaScript Modules -->
+    <script src="{% static 'ailms/js/notifications.js' %}"></script>
+    <script src="{% static 'ailms/js/api.js' %}"></script>
+    <script src="{% static 'ailms/js/websocket.js' %}"></script>
+    <script src="{% static 'ailms/js/main.js' %}"></script>
+    
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

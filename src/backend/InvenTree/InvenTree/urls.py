@@ -60,6 +60,7 @@ apipatterns = [
     path('machine/', include(machine.api.machine_api_urls)),
     path('order/', include(order.api.order_api_urls)),
     path('part/', include(part.api.part_api_urls)),
+    path('ai/procurement/', include('ai_procurement.urls')),
     path('report/', include(report.api.report_api_urls)),
     path('search/', APISearchView.as_view(), name='api-search'),
     path('settings/', include(common.api.settings_api_urls)),
@@ -159,6 +160,9 @@ urlpatterns += backendpatterns
 urlpatterns += [  # API URLs
     path('api/', include(apipatterns)),
     path('api-doc/', SpectacularRedocView.as_view(url_name='schema'), name='api-doc'),
+]
+urlpatterns += [  # AI-First Web Interface
+    path('ai/', include('ailms.urls', namespace='ailms')),
 ]
 urlpatterns += platform_urls
 

@@ -1,0 +1,102 @@
+{% load i18n %}
+<nav class="bg-white shadow-md" aria-label="Main navigation" x-data="{ mobileMenuOpen: false }">
+    <div class="container mx-auto px-4">
+        <div class="flex justify-between items-center h-16">
+            <!-- Logo and Brand -->
+            <div class="flex items-center space-x-4">
+                <a href="{% url 'ailms:dashboard' %}" class="flex items-center space-x-2">
+                    <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                        <span class="text-white font-bold text-xl">AI</span>
+                    </div>
+                    <span class="text-xl font-bold text-gray-800">{% trans "AI Logistics" %}</span>
+                </a>
+            </div>
+            
+            <!-- Desktop Navigation -->
+            <div class="hidden lg:flex items-center space-x-6">
+                <a href="{% url 'ailms:dashboard' %}" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                    {% trans "Dashboard" %}
+                </a>
+                <a href="{% url 'ailms:parts_list' %}" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                    {% trans "Parts" %}
+                </a>
+                <a href="{% url 'ailms:pipeline-list' %}" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                    {% trans "Procurement" %}
+                </a>
+                <a href="{% url 'ailms:approval-queue' %}" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                    {% trans "Approvals" %}
+                </a>
+                <a href="{% url 'ailms:supplier-list' %}" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                    {% trans "Suppliers" %}
+                </a>
+                <a href="{% url 'ailms:inventory-list' %}" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                    {% trans "Inventory" %}
+                </a>
+                <a href="{% url 'ailms:analytics' %}" class="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                    {% trans "Analytics" %}
+                </a>
+            </div>
+            
+            <!-- User Menu -->
+            <div class="hidden lg:flex items-center space-x-4">
+                <a href="/web" class="text-sm text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md border border-gray-300">
+                    {% trans "Back to InvenTree" %}
+                </a>
+                {% if user.is_authenticated %}
+                    <span class="text-sm text-gray-600">{{ user.username }}</span>
+                    <a href="/accounts/logout/" class="text-sm text-gray-700 hover:text-blue-600">
+                        {% trans "Logout" %}
+                    </a>
+                {% else %}
+                    <a href="/accounts/login/" class="text-sm text-gray-700 hover:text-blue-600">
+                        {% trans "Login" %}
+                    </a>
+                {% endif %}
+            </div>
+            
+            <!-- Mobile Menu Button -->
+            <button @click="mobileMenuOpen = !mobileMenuOpen" class="lg:hidden p-2 rounded-md text-gray-700 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-600" aria-label="Toggle mobile menu" aria-expanded="false">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path x-show="!mobileMenuOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    <path x-show="mobileMenuOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <!-- Mobile Menu -->
+        <div x-show="mobileMenuOpen" x-transition class="lg:hidden pb-4" role="list">
+            <a href="{% url 'ailms:dashboard' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">
+                {% trans "Dashboard" %}
+            </a>
+            <a href="{% url 'ailms:parts_list' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">
+                {% trans "Parts" %}
+            </a>
+            <a href="{% url 'ailms:pipeline-list' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">
+                {% trans "Procurement" %}
+            </a>
+            <a href="{% url 'ailms:approval-queue' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">
+                {% trans "Approvals" %}
+            </a>
+            <a href="{% url 'ailms:supplier-list' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">
+                {% trans "Suppliers" %}
+            </a>
+            <a href="{% url 'ailms:inventory-list' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">
+                {% trans "Inventory" %}
+            </a>
+            <a href="{% url 'ailms:analytics' %}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:bg-gray-100">
+                {% trans "Analytics" %}
+            </a>
+            {% if user.is_authenticated %}
+                <div class="border-t border-gray-200 mt-2 pt-2">
+                    <a href="/web" class="block px-3 py-2 text-sm text-blue-600 hover:bg-gray-100 font-medium">
+                        {% trans "Back to InvenTree" %}
+                    </a>
+                    <span class="block px-3 py-2 text-sm text-gray-600">{{ user.username }}</span>
+                    <a href="/accounts/logout/" class="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                        {% trans "Logout" %}
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</nav>

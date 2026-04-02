@@ -1,0 +1,112 @@
+/* Custom CSS for AI-First Logistics Management System */
+
+/* AI Insights Card */
+.ai-insights-card {
+    @apply bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4;
+}
+
+/* Pipeline Progress Indicator */
+.pipeline-node {
+    @apply relative flex flex-col items-center;
+}
+
+.pipeline-node.completed .node-circle {
+    @apply bg-green-500 text-white;
+}
+
+.pipeline-node.running .node-circle {
+    @apply bg-blue-500 text-white animate-pulse;
+}
+
+.pipeline-node.pending .node-circle {
+    @apply bg-gray-300 text-gray-500;
+}
+
+.pipeline-node.failed .node-circle {
+    @apply bg-red-500 text-white;
+}
+
+/* Approval Card */
+.approval-card {
+    @apply bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200;
+}
+
+.approval-card.urgent {
+    @apply border-l-4 border-red-500;
+}
+
+/* Notification Toast */
+.notification-toast {
+    @apply fixed top-4 right-4 z-50 max-w-md;
+    animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* Loading Spinner */
+.loading-spinner {
+    @apply inline-block w-6 h-6 border-4 border-blue-200 border-t-blue-600 rounded-full;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* AI Badge */
+.ai-badge {
+    @apply inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+/* Focus Indicators for Accessibility */
+*:focus {
+    @apply outline-none ring-2 ring-blue-600 ring-offset-2;
+}
+
+/* Screen Reader Only */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+.sr-only:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: inherit;
+    margin: inherit;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+}

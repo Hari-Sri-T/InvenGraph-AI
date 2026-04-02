@@ -1,0 +1,251 @@
+{% extends "ailms/base.html" %}
+{% load static %}
+
+{% block title %}{{ part.name }} - Part Details - AI Logistics{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    {% if not part %}
+    <!-- Part Not Found -->
+    <div class="bg-white rounded-lg shadow-sm p-8 text-center">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <h3 class="mt-2 text-lg font-medium text-gray-900">Part not found</h3>
+        <p class="mt-1 text-sm text-gray-500">The requested part does not exist.</p>
+        <div class="mt-6">
+            <a href="{% url 'ailms:parts_list' %}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                Back to Parts List
+            </a>
+        </div>
+    </div>
+    {% else %}
+    <!-- Breadcrumb -->
+    <nav class="mb-4 text-sm">
+        <ol class="flex items-center space-x-2 text-gray-500">
+            <li><a href="{% url 'ailms:dashboard' %}" class="hover:text-blue-600">Dashboard</a></li>
+            <li><span class="mx-2">/</span></li>
+            <li><a href="{% url 'ailms:parts_list' %}" class="hover:text-blue-600">Parts</a></li>
+            <li><span class="mx-2">/</span></li>
+            <li class="text-gray-900">{{ part.name }}</li>
+        </ol>
+    </nav>
+
+    <!-- Part Header -->
+    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <div class="flex justify-between items-start">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ part.name }}</h1>
+                <p class="text-gray-600 mb-2">{{ part.description|default:"No description" }}</p>
+                <div class="flex gap-4 text-sm text-gray-500">
+                    <span>IPN: {{ part.IPN|default:"N/A" }}</span>
+                    <span>Category: {{ part.category.name|default:"Uncategorized" }}</span>
+                </div>
+            </div>
+            <div class="text-right">
+                {% if part.total_stock < part.minimum_stock %}
+                <span class="inline-block px-3 py-1 bg-red-100 text-red-800 text-sm font-medium rounded mb-2">
+                    Low Stock
+                </span>
+                {% endif %}
+                <button 
+                    hx-post="{% url 'ai_procurement:ai-procurement-pipeline-trigger' %}"
+                    hx-vals='{"part_id": {{ part.id }}}'
+                    hx-swap="none"
+                    class="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                    Trigger Procurement
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left Column: Stock & Forecast -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Stock Information -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Stock Information</h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Current Stock</p>
+                        <p class="text-2xl font-bold {% if part.total_stock < part.minimum_stock %}text-red-600{% else %}text-gray-900{% endif %}">
+                            {{ part.total_stock }}
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Minimum Stock</p>
+                        <p class="text-2xl font-bold text-gray-900">{{ part.minimum_stock }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Forecast -->
+            {% if forecast %}
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/>
+                    </svg>
+                    AI Demand Forecast
+                </h2>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Predicted Demand</p>
+                        <p class="text-2xl font-bold text-gray-900">{{ forecast.predicted_demand|floatformat:0 }} units</p>
+                        <p class="text-xs text-gray-500 mt-1">Next {{ forecast.forecast_horizon_days }} days</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Confidence Range</p>
+                        <p class="text-lg font-semibold text-gray-900">
+                            {{ forecast.confidence_lower|floatformat:0 }} - {{ forecast.confidence_upper|floatformat:0 }}
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Trend Direction</p>
+                        <p class="text-lg font-semibold">
+                            {% if forecast.trend_direction == 'increasing' %}
+                            <span class="text-green-600">↑ Increasing</span>
+                            {% elif forecast.trend_direction == 'decreasing' %}
+                            <span class="text-red-600">↓ Decreasing</span>
+                            {% else %}
+                            <span class="text-gray-600">→ Stable</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Model Used</p>
+                        <p class="text-lg font-semibold text-gray-900">{{ forecast.model_used|title }}</p>
+                    </div>
+                    {% if days_until_stockout %}
+                    <div class="col-span-2">
+                        <p class="text-sm text-gray-600 mb-1">Days Until Stockout</p>
+                        <p class="text-2xl font-bold {% if days_until_stockout < 30 %}text-red-600{% else %}text-gray-900{% endif %}">
+                            {{ days_until_stockout }} days
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="mt-4 pt-4 border-t border-gray-200">
+                    <p class="text-xs text-gray-500">
+                        Forecast generated: {{ forecast.created_at|date:"M d, Y H:i" }}
+                        {% if forecast.seasonality_detected %}
+                        <span class="ml-2 px-2 py-0.5 bg-blue-100 text-blue-800 rounded">Seasonality Detected</span>
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+            {% else %}
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">AI Demand Forecast</h2>
+                <p class="text-gray-500 italic">No forecast available. Trigger procurement to generate AI insights.</p>
+            </div>
+            {% endif %}
+
+            <!-- Recent Pipeline Executions -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Recent Pipeline Executions</h2>
+                {% if recent_pipelines %}
+                <div class="space-y-3">
+                    {% for pipeline in recent_pipelines %}
+                    <div class="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">{{ pipeline.trigger_reason }}</p>
+                            <p class="text-xs text-gray-500">{{ pipeline.created_at|date:"M d, Y H:i" }}</p>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="px-2 py-1 text-xs font-medium rounded
+                                {% if pipeline.status == 'completed' %}bg-green-100 text-green-800
+                                {% elif pipeline.status == 'running' %}bg-blue-100 text-blue-800
+                                {% elif pipeline.status == 'interrupted' %}bg-yellow-100 text-yellow-800
+                                {% elif pipeline.status == 'failed' %}bg-red-100 text-red-800
+                                {% else %}bg-gray-100 text-gray-800{% endif %}">
+                                {{ pipeline.status|title }}
+                            </span>
+                            <a href="{% url 'ailms:pipeline-status' pipeline.id %}" 
+                               class="text-sm text-blue-600 hover:text-blue-800">
+                                View →
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500 italic">No pipeline executions yet.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Right Column: Suppliers -->
+        <div class="space-y-6">
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-4">Supplier Rankings</h2>
+                {% if suppliers %}
+                <div class="space-y-4">
+                    {% for supplier in suppliers %}
+                    <div class="p-4 border border-gray-200 rounded-lg">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-semibold text-gray-900">{{ supplier.name }}</h3>
+                            {% if supplier.evaluation %}
+                            <span class="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
+                                #{{ supplier.evaluation.ranking_position }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">SKU:</span>
+                                <span class="font-medium text-gray-900">{{ supplier.SKU|default:"N/A" }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Unit Price:</span>
+                                <span class="font-medium text-gray-900">${{ supplier.unit_price|floatformat:2 }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Lead Time:</span>
+                                <span class="font-medium text-gray-900">{{ supplier.lead_time }} days</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">MOQ:</span>
+                                <span class="font-medium text-gray-900">{{ supplier.MOQ }}</span>
+                            </div>
+                        </div>
+
+                        {% if supplier.evaluation %}
+                        <div class="mt-3 pt-3 border-t border-gray-200">
+                            <p class="text-xs font-semibold text-gray-700 mb-2">AI Evaluation Scores</p>
+                            <div class="space-y-1">
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-gray-600">Overall:</span>
+                                    <span class="font-medium text-gray-900">{{ supplier.evaluation.overall_score|floatformat:2 }}</span>
+                                </div>
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-gray-600">Price:</span>
+                                    <span class="font-medium text-gray-900">{{ supplier.evaluation.price_score|floatformat:2 }}</span>
+                                </div>
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-gray-600">Lead Time:</span>
+                                    <span class="font-medium text-gray-900">{{ supplier.evaluation.lead_time_score|floatformat:2 }}</span>
+                                </div>
+                                <div class="flex justify-between text-xs">
+                                    <span class="text-gray-600">Reliability:</span>
+                                    <span class="font-medium text-gray-900">{{ supplier.evaluation.reliability_score|floatformat:2 }}</span>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-600 mt-2 italic">{{ supplier.evaluation.recommendation_reason }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-gray-500 italic">No suppliers linked to this part.</p>
+                <p class="text-sm text-gray-600 mt-2">Add suppliers to enable AI-powered procurement.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

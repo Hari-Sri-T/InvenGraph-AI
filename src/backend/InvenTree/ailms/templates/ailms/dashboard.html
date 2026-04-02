@@ -1,0 +1,152 @@
+{% extends 'ailms/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans "AI Dashboard" %}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Page Header -->
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">{% trans "AI Dashboard" %}</h1>
+        <p class="mt-2 text-gray-600">{% trans "Real-time insights from your AI-powered logistics system" %}</p>
+    </div>
+    
+    <!-- AI Insights Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Active Pipelines -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">{% trans "Active Pipelines" %}</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-2">{{ active_pipelines }}</p>
+                </div>
+                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Pending Approvals -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">{% trans "Pending Approvals" %}</p>
+                    <p class="text-3xl font-bold text-orange-600 mt-2">{{ pending_approvals }}</p>
+                </div>
+                <div class="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+            </div>
+            {% if pending_approvals > 0 %}
+            <a href="{% url 'ailms:approval-queue' %}" class="mt-4 inline-block text-sm text-orange-600 hover:text-orange-700 font-medium">
+                {% trans "Review approvals" %} →
+            </a>
+            {% endif %}
+        </div>
+        
+        <!-- Forecast Accuracy -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">{% trans "Forecast Accuracy" %}</p>
+                    <p class="text-3xl font-bold text-green-600 mt-2">{{ forecast_accuracy|floatformat:1 }}%</p>
+                </div>
+                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recent Decisions -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">{% trans "Recent Decisions" %}</p>
+                    <p class="text-3xl font-bold text-gray-900 mt-2">{{ recent_decisions }}</p>
+                </div>
+                <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Activity -->
+    <div class="bg-white rounded-lg shadow">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-gray-900">{% trans "Recent Pipeline Activity" %}</h2>
+        </div>
+        <div class="p-6">
+            {% if recent_pipelines %}
+                <div class="space-y-4">
+                    {% for pipeline in recent_pipelines %}
+                    <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div class="flex-1">
+                            <p class="font-medium text-gray-900">{{ pipeline.part.name }}</p>
+                            <p class="text-sm text-gray-600">{{ pipeline.trigger_reason }}</p>
+                            <p class="text-xs text-gray-500 mt-1">{{ pipeline.created_at|date:"Y-m-d H:i" }}</p>
+                        </div>
+                        <div>
+                            {% if pipeline.status == 'running' %}
+                                <span class="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                                    {% trans "Running" %}
+                                </span>
+                            {% elif pipeline.status == 'completed' %}
+                                <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                                    {% trans "Completed" %}
+                                </span>
+                            {% elif pipeline.status == 'interrupted' %}
+                                <span class="px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm font-medium">
+                                    {% trans "Awaiting Approval" %}
+                                </span>
+                            {% elif pipeline.status == 'failed' %}
+                                <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
+                                    {% trans "Failed" %}
+                                </span>
+                            {% elif pipeline.status == 'rejected' %}
+                                <span class="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-sm font-medium">
+                                    {% trans "Rejected" %}
+                                </span>
+                            {% endif %}
+                        </div>
+                        <div class="ml-4">
+                            <a href="{% url 'ailms:pipeline-status' pipeline.id %}" class="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                                {% trans "View" %} →
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-gray-500 text-center py-8">{% trans "No recent pipeline activity" %}</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <a href="{% url 'ailms:parts_list' %}" class="block p-6 bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
+            <h3 class="text-lg font-semibold text-gray-900">{% trans "Browse Parts" %}</h3>
+            <p class="mt-2 text-sm text-gray-600">{% trans "View parts with AI demand forecasts" %}</p>
+        </a>
+        
+        <a href="{% url 'ailms:approval-queue' %}" class="block p-6 bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
+            <h3 class="text-lg font-semibold text-gray-900">{% trans "Approval Queue" %}</h3>
+            <p class="mt-2 text-sm text-gray-600">{% trans "Review AI procurement decisions" %}</p>
+        </a>
+        
+        <a href="{% url 'ailms:analytics' %}" class="block p-6 bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
+            <h3 class="text-lg font-semibold text-gray-900">{% trans "Analytics" %}</h3>
+            <p class="mt-2 text-sm text-gray-600">{% trans "View AI performance metrics" %}</p>
+        </a>
+    </div>
+</div>
+{% endblock %}

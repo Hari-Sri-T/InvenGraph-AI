@@ -345,6 +345,10 @@ INSTALLED_APPS = [
     'django_mailbox',  # For email import
     'anymail',  # For email sending/receiving via ESPs
     'storages',
+    
+    # Agentic Part
+    'ai_procurement',
+    'ailms',  # AI-First Logistics Management System Web Interface
 ]
 
 MIDDLEWARE = CONFIG.get(

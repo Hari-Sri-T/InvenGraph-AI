@@ -1,0 +1,370 @@
+{% extends "ailms/base.html" %}
+{% load static %}
+
+{% block title %}Pipeline Status - AI Logistics{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    {% if not pipeline %}
+    <!-- Pipeline Not Found -->
+    <div class="bg-white rounded-lg shadow-sm p-8 text-center">
+        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <h3 class="mt-2 text-lg font-medium text-gray-900">Pipeline not found</h3>
+        <p class="mt-1 text-sm text-gray-500">The requested pipeline does not exist.</p>
+        <div class="mt-6">
+            <a href="{% url 'ailms:dashboard' %}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                Back to Dashboard
+            </a>
+        </div>
+    </div>
+    {% else %}
+    <!-- Breadcrumb -->
+    <nav class="mb-4 text-sm">
+        <ol class="flex items-center space-x-2 text-gray-500">
+            <li><a href="{% url 'ailms:dashboard' %}" class="hover:text-blue-600">Dashboard</a></li>
+            <li><span class="mx-2">/</span></li>
+            <li class="text-gray-900">Pipeline {{ pipeline.id|truncatechars:8 }}</li>
+        </ol>
+    </nav>
+
+    <!-- Pipeline Header -->
+    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <div class="flex justify-between items-start">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">Pipeline Execution</h1>
+                <p class="text-gray-600 mb-2">{{ pipeline.part.name }}</p>
+                <p class="text-sm text-gray-500">{{ pipeline.trigger_reason }}</p>
+            </div>
+            <div class="text-right">
+                <span class="inline-block px-3 py-1 text-sm font-medium rounded
+                    {% if pipeline.status == 'completed' %}bg-green-100 text-green-800
+                    {% elif pipeline.status == 'running' %}bg-blue-100 text-blue-800
+                    {% elif pipeline.status == 'interrupted' %}bg-yellow-100 text-yellow-800
+                    {% elif pipeline.status == 'failed' %}bg-red-100 text-red-800
+                    {% elif pipeline.status == 'rejected' %}bg-gray-100 text-gray-800
+                    {% else %}bg-gray-100 text-gray-800{% endif %}">
+                    {{ pipeline.status|title }}
+                </span>
+                <p class="text-xs text-gray-500 mt-2">Started: {{ pipeline.created_at|date:"M d, Y H:i" }}</p>
+                {% if pipeline.completed_at %}
+                <p class="text-xs text-gray-500">Completed: {{ pipeline.completed_at|date:"M d, Y H:i" }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Pipeline Workflow Visualization -->
+    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-6">Workflow Progress</h2>
+        
+        <div class="space-y-4">
+            <!-- Node 1: Data Collection -->
+            <div class="flex items-start">
+                <div class="flex-shrink-0 mr-4">
+                    {% if pipeline.current_node == 'data_collection' %}
+                    <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    {% elif pipeline.status == 'completed' or pipeline.current_node != 'data_collection' %}
+                    <div class="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    {% else %}
+                    <div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
+                        <span class="text-gray-600 font-semibold">1</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg font-semibold text-gray-900">Data Collection</h3>
+                    <p class="text-sm text-gray-600 mt-1">Collecting historical demand data and supplier information</p>
+                    {% if pipeline.current_node == 'data_collection' %}
+                    <span class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded mt-2">
+                        <svg class="animate-spin -ml-1 mr-2 h-3 w-3 text-blue-800" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        In Progress
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="ml-5 w-0.5 h-6 {% if pipeline.status == 'completed' or pipeline.current_node != 'data_collection' %}bg-green-500{% else %}bg-gray-300{% endif %}"></div>
+
+            <!-- Node 2: Demand Forecasting -->
+            <div class="flex items-start">
+                <div class="flex-shrink-0 mr-4">
+                    {% if pipeline.current_node == 'demand_forecasting' %}
+                    <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    {% elif pipeline.status == 'completed' or pipeline.current_node not in 'data_collection,demand_forecasting' %}
+                    <div class="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    {% else %}
+                    <div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
+                        <span class="text-gray-600 font-semibold">2</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg font-semibold text-gray-900">Demand Forecasting</h3>
+                    <p class="text-sm text-gray-600 mt-1">Forecasting future demand using AI models</p>
+                    {% if pipeline.current_node == 'demand_forecasting' %}
+                    <span class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded mt-2">
+                        <svg class="animate-spin -ml-1 mr-2 h-3 w-3 text-blue-800" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        In Progress
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="ml-5 w-0.5 h-6 {% if pipeline.status == 'completed' or pipeline.current_node not in 'data_collection,demand_forecasting' %}bg-green-500{% else %}bg-gray-300{% endif %}"></div>
+
+            <!-- Node 3: Supplier Ranking -->
+            <div class="flex items-start">
+                <div class="flex-shrink-0 mr-4">
+                    {% if pipeline.current_node == 'supplier_ranking' %}
+                    <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    {% elif pipeline.status == 'completed' or pipeline.current_node not in 'data_collection,demand_forecasting,supplier_ranking' %}
+                    <div class="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    {% else %}
+                    <div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
+                        <span class="text-gray-600 font-semibold">3</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg font-semibold text-gray-900">Supplier Ranking</h3>
+                    <p class="text-sm text-gray-600 mt-1">Evaluating and ranking suppliers based on multiple criteria</p>
+                    {% if pipeline.current_node == 'supplier_ranking' %}
+                    <span class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded mt-2">
+                        <svg class="animate-spin -ml-1 mr-2 h-3 w-3 text-blue-800" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        In Progress
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="ml-5 w-0.5 h-6 {% if pipeline.status == 'completed' or pipeline.current_node not in 'data_collection,demand_forecasting,supplier_ranking' %}bg-green-500{% else %}bg-gray-300{% endif %}"></div>
+
+            <!-- Node 4: Decision Making -->
+            <div class="flex items-start">
+                <div class="flex-shrink-0 mr-4">
+                    {% if pipeline.current_node == 'decision_making' %}
+                    <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    {% elif pipeline.status == 'completed' or pipeline.current_node not in 'data_collection,demand_forecasting,supplier_ranking,decision_making' %}
+                    <div class="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    {% else %}
+                    <div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
+                        <span class="text-gray-600 font-semibold">4</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg font-semibold text-gray-900">Decision Making</h3>
+                    <p class="text-sm text-gray-600 mt-1">AI agent making procurement decision</p>
+                    {% if pipeline.current_node == 'decision_making' %}
+                    <span class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded mt-2">
+                        <svg class="animate-spin -ml-1 mr-2 h-3 w-3 text-blue-800" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        In Progress
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="ml-5 w-0.5 h-6 {% if pipeline.status == 'completed' or pipeline.current_node not in 'data_collection,demand_forecasting,supplier_ranking,decision_making' %}bg-green-500{% else %}bg-gray-300{% endif %}"></div>
+
+            <!-- Node 5: Human Approval -->
+            <div class="flex items-start">
+                <div class="flex-shrink-0 mr-4">
+                    {% if pipeline.current_node == 'human_approval' %}
+                    <div class="w-10 h-10 rounded-full bg-yellow-500 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    {% elif pipeline.status == 'completed' or pipeline.current_node in 'execution,learning_update' %}
+                    <div class="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    {% else %}
+                    <div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
+                        <span class="text-gray-600 font-semibold">5</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg font-semibold text-gray-900">Human Approval</h3>
+                    <p class="text-sm text-gray-600 mt-1">Waiting for human approval</p>
+                    {% if pipeline.current_node == 'human_approval' %}
+                    <span class="inline-flex items-center px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded mt-2">
+                        Waiting for Approval
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="ml-5 w-0.5 h-6 {% if pipeline.status == 'completed' or pipeline.current_node in 'execution,learning_update' %}bg-green-500{% else %}bg-gray-300{% endif %}"></div>
+
+            <!-- Node 6: Execution -->
+            <div class="flex items-start">
+                <div class="flex-shrink-0 mr-4">
+                    {% if pipeline.current_node == 'execution' %}
+                    <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    {% elif pipeline.status == 'completed' or pipeline.current_node == 'learning_update' %}
+                    <div class="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    {% else %}
+                    <div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
+                        <span class="text-gray-600 font-semibold">6</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg font-semibold text-gray-900">Execution</h3>
+                    <p class="text-sm text-gray-600 mt-1">Creating purchase order</p>
+                    {% if pipeline.current_node == 'execution' %}
+                    <span class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded mt-2">
+                        <svg class="animate-spin -ml-1 mr-2 h-3 w-3 text-blue-800" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        In Progress
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="ml-5 w-0.5 h-6 {% if pipeline.status == 'completed' or pipeline.current_node == 'learning_update' %}bg-green-500{% else %}bg-gray-300{% endif %}"></div>
+
+            <!-- Node 7: Learning Update -->
+            <div class="flex items-start">
+                <div class="flex-shrink-0 mr-4">
+                    {% if pipeline.current_node == 'learning_update' %}
+                    <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    {% elif pipeline.status == 'completed' %}
+                    <div class="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    {% else %}
+                    <div class="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
+                        <span class="text-gray-600 font-semibold">7</span>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-lg font-semibold text-gray-900">Learning Update</h3>
+                    <p class="text-sm text-gray-600 mt-1">Updating AI models with new data</p>
+                    {% if pipeline.current_node == 'learning_update' %}
+                    <span class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded mt-2">
+                        <svg class="animate-spin -ml-1 mr-2 h-3 w-3 text-blue-800" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        In Progress
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pipeline State Data -->
+    {% if pipeline.state_data %}
+    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Pipeline Data</h2>
+        <div class="bg-gray-50 rounded-lg p-4">
+            <pre class="text-xs text-gray-700 overflow-x-auto">{{ pipeline.state_data|pprint }}</pre>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Error Message -->
+    {% if pipeline.error_message %}
+    <div class="bg-red-50 border border-red-200 rounded-lg p-6 mb-6">
+        <h2 class="text-xl font-semibold text-red-900 mb-2">Error</h2>
+        <p class="text-red-700">{{ pipeline.error_message }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Actions -->
+    <div class="bg-white rounded-lg shadow-sm p-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Actions</h2>
+        <div class="flex gap-4">
+            {% if pipeline.status == 'interrupted' %}
+            <a href="{% url 'ailms:approval-queue' %}" 
+               class="px-6 py-2 bg-yellow-600 text-white font-medium rounded-lg hover:bg-yellow-700 transition-colors">
+                Go to Approval Queue
+            </a>
+            {% elif pipeline.status == 'failed' %}
+            <button 
+                hx-post="{% url 'ai_procurement:ai-procurement-pipeline-trigger' %}"
+                hx-vals='{"part_id": {{ pipeline.part.id }}}'
+                hx-swap="none"
+                class="px-6 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors">
+                Retry Pipeline
+            </button>
+            {% elif pipeline.status == 'completed' and pipeline.purchase_order_id %}
+            <a href="/order/purchase-order/{{ pipeline.purchase_order_id }}/" 
+               class="px-6 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors">
+                View Purchase Order
+            </a>
+            {% endif %}
+            <a href="{% url 'ailms:part_detail' pipeline.part.id %}" 
+               class="px-6 py-2 bg-gray-200 text-gray-700 font-medium rounded-lg hover:bg-gray-300 transition-colors">
+                View Part Details
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Custom template filters -->
+{% load custom_filters %}
