@@ -41,7 +41,7 @@ from .api import (
 )
 from .config import get_setting
 from .magic_login import GetSimpleLoginView
-from .views import auth_request
+from .views import auth_request, CustomLoginRedirect
 
 # Set admin header from config or use default
 admin.site.site_header = get_setting(
@@ -134,14 +134,17 @@ backendpatterns = [
     path(
         'auth/', auth_request, name='auth-check'
     ),  # Used for proxies to check if user is authenticated
-    path('accounts/', include('allauth.urls')),
     # OAuth2
     flagged_path('OIDC', 'o/', include(oauth2_urls)),
+    # Custom login redirect - must come BEFORE allauth.urls to override
+    # Honors ?next= parameter for /ai/ routes, redirects to React frontend for others
     path(
         'accounts/login/',
-        RedirectView.as_view(url=f'/{settings.FRONTEND_URL_BASE}', permanent=False),
+        CustomLoginRedirect.as_view(),
         name='account_login',
-    ),  # Add a redirect for login views
+    ),
+    # Allauth URLs - comes after our custom account_login override
+    path('accounts/', include('allauth.urls')),
     path('anymail/', include('anymail.urls')),  # Emails
 ]
 

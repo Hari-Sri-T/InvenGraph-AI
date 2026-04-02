@@ -15,6 +15,7 @@ import {
 import {
   IconBookmarks,
   IconBuilding,
+  IconBrain,
   IconChecklist,
   IconCircleCheck,
   IconClipboardList,
@@ -111,7 +112,7 @@ import PartAllocationPanel from './PartAllocationPanel';
 import PartPricingPanel from './PartPricingPanel';
 import PartStockHistoryDetail from './PartStockHistoryDetail';
 import PartSupplierDetail from './PartSupplierDetail';
-
+import AIProcurementPanel from './AIProcurementPanel';
 /**
  * Render a part revision selector component
  */
@@ -855,6 +856,13 @@ export default function PartDetail() {
         label: t`Part Pricing`,
         icon: <IconCurrencyDollar />,
         content: part ? <PartPricingPanel part={part} /> : <Skeleton />
+      },
+      {
+        name: 'ai_procurement',
+        label: t`AI Procurement`,
+        icon: <IconBrain />,
+        hidden: !part.purchaseable || !user.hasViewRole(UserRoles.purchase_order),
+        content: part.pk ? <AIProcurementPanel partId={part.pk} /> : <Skeleton />
       },
       {
         name: 'suppliers',

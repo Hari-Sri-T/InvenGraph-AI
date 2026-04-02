@@ -17,6 +17,21 @@ services:
     ports:
       - 6379
 
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    ports:
+      - 11434:11434
+    volumes:
+      - ollama-data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   inventree:
     ports:
       - 8000:8000
@@ -41,6 +56,20 @@ services:
       INVENTREE_CORS_ORIGIN_ALLOW_ALL: True
       INVENTREE_PY_ENV: /home/inventree/dev/venv
       INVENTREE_DEVCONTAINER: True
+      # AI Procurement Configuration
+      AI_PROCUREMENT_OLLAMA_URL: http://ollama:11434/api/generate
+      AI_PROCUREMENT_PRICE_WEIGHT: 0.4
+      AI_PROCUREMENT_LEAD_TIME_WEIGHT: 0.3
+      AI_PROCUREMENT_RELIABILITY_WEIGHT: 0.3
+      AI_PROCUREMENT_FORECAST_DAYS: 30
+      AI_PROCUREMENT_APPROVAL_TIMEOUT_DAYS: 7
+      AI_PROCUREMENT_EMA_ALPHA: 0.3
+      AI_PROCUREMENT_PROPHET_CACHE_TTL_DAYS: 7
 
     depends_on:
       - db
+      - redis
+      - ollama
+
+volumes:
+  ollama-data:

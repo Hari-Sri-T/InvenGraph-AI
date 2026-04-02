@@ -22,3 +22,28 @@ def auth_request(request):
 
     # User is authenticated and active
     return HttpResponse(status=200)
+
+
+from django.views.generic import RedirectView
+from django.conf import settings
+
+
+class CustomLoginRedirect(RedirectView):
+    """Custom login redirect that honors ?next= parameter for /ai/ routes.
+    
+    For /ai/ routes, redirect to the AI interface login page.
+    For other routes, redirect to the React frontend.
+    """
+    
+    permanent = False
+    
+    def get_redirect_url(self, *args, **kwargs):
+        """Return the URL to redirect to."""
+        next_url = self.request.GET.get('next', '')
+        
+        # If the next URL is an /ai/ route, redirect to AI login page
+        if next_url.startswith('/ai/'):
+            return f'/ai/login/?next={next_url}'
+        
+        # For all other routes, redirect to React frontend
+        return f'/{settings.FRONTEND_URL_BASE}'

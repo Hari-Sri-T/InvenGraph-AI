@@ -1,42 +1,288 @@
 {% extends "ailms/base.html" %}
-{% load i18n %}
+{% load static %}
+{% load ailms_filters %}
 
-{% block title %}{% trans "Analytics" %}{% endblock %}
+{% block title %}Analytics Dashboard - AI Logistics{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8">
-    <h1 class="text-3xl font-bold text-gray-900 mb-6">{% trans "Analytics Dashboard" %}</h1>
-    
-    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-        <div class="flex">
-            <div class="flex-shrink-0">
-                <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                </svg>
+<div class="container mx-auto px-4 py-6">
+    <!-- Page Header -->
+    <div class="mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">Analytics Dashboard</h1>
+        <p class="text-gray-600">AI performance metrics, forecast accuracy, and procurement insights</p>
+    </div>
+
+    <!-- Forecast Accuracy Section -->
+    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+            <svg class="w-5 h-5 mr-2 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"/>
+            </svg>
+            Forecast Accuracy
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Overall Accuracy -->
+            <div>
+                <div class="text-center p-6 bg-blue-50 rounded-lg">
+                    <div class="text-5xl font-bold text-blue-600 mb-2">{{ forecast_accuracy|floatformat:1 }}%</div>
+                    <div class="text-sm text-gray-600">Overall Forecast Accuracy</div>
+                    <div class="text-xs text-gray-500 mt-2">Last 30 days</div>
+                </div>
             </div>
-            <div class="ml-3">
-                <p class="text-sm text-yellow-700">
-                    {% trans "This page is under construction. Analytics features will be available soon." %}
-                </p>
+            
+            <!-- Accuracy by Category -->
+            <div>
+                <h3 class="text-sm font-semibold text-gray-700 mb-3">Accuracy by Category</h3>
+                {% if accuracy_by_category %}
+                <div class="space-y-2">
+                    {% for item in accuracy_by_category %}
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-sm text-gray-600">{{ item.category }}</span>
+                            <span class="text-sm font-medium text-gray-900">{{ item.accuracy|floatformat:1 }}%</span>
+                        </div>
+                        <div class="w-full h-2 bg-gray-200 rounded-full">
+                            <div class="h-2 bg-blue-500 rounded-full" style="width: {{ item.accuracy }}%"></div>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-1">{{ item.count }} forecast{{ item.count|pluralize }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-sm text-gray-500 italic">No category data available</p>
+                {% endif %}
             </div>
         </div>
     </div>
-    
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div class="bg-white p-6 rounded-lg shadow">
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">{% trans "Forecast Accuracy" %}</h3>
-            <p class="text-sm text-gray-600">{% trans "Coming soon: AI forecast performance metrics" %}</p>
+
+    <!-- Procurement Metrics Section -->
+    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+            <svg class="w-5 h-5 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11.707 4.707a1 1 0 00-1.414-1.414L10 9.586 8.707 8.293a1 1 0 00-1.414 0l-2 2a1 1 0 101.414 1.414L8 10.414l1.293 1.293a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+            </svg>
+            Procurement Metrics
+        </h2>
+        
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div class="text-center">
+                <div class="text-3xl font-bold text-gray-900 mb-1">{{ procurement_metrics.total_pipelines }}</div>
+                <div class="text-sm text-gray-600">Total Pipelines</div>
+            </div>
+            <div class="text-center">
+                <div class="text-3xl font-bold text-green-600 mb-1">{{ procurement_metrics.completed }}</div>
+                <div class="text-sm text-gray-600">Completed</div>
+            </div>
+            <div class="text-center">
+                <div class="text-3xl font-bold text-blue-600 mb-1">{{ procurement_metrics.success_rate|floatformat:1 }}%</div>
+                <div class="text-sm text-gray-600">Success Rate</div>
+            </div>
+            <div class="text-center">
+                <div class="text-3xl font-bold text-purple-600 mb-1">{{ procurement_metrics.avg_execution_time|floatformat:1 }}s</div>
+                <div class="text-sm text-gray-600">Avg Execution Time</div>
+            </div>
         </div>
         
-        <div class="bg-white p-6 rounded-lg shadow">
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">{% trans "Procurement Metrics" %}</h3>
-            <p class="text-sm text-gray-600">{% trans "Coming soon: Pipeline success rates and execution times" %}</p>
+        <div class="mt-6 grid grid-cols-2 gap-4">
+            <div class="bg-yellow-50 rounded-lg p-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-600">Interrupted</span>
+                    <span class="text-2xl font-bold text-yellow-600">{{ procurement_metrics.interrupted }}</span>
+                </div>
+            </div>
+            <div class="bg-red-50 rounded-lg p-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-600">Failed</span>
+                    <span class="text-2xl font-bold text-red-600">{{ procurement_metrics.failed }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supplier Performance Section -->
+    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+            <svg class="w-5 h-5 mr-2 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"/>
+            </svg>
+            Supplier Performance
+        </h2>
+        
+        {% if supplier_performance %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">AI Score</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">On-Time Delivery</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quality Acceptance</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lead Time Accuracy</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for supplier in supplier_performance %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">{{ supplier.name }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="w-16 h-2 bg-gray-200 rounded-full mr-2">
+                                    <div class="h-2 bg-blue-500 rounded-full" style="width: {{ supplier.ai_score|floatformat:0|mul:100 }}%"></div>
+                                </div>
+                                <span class="text-sm font-medium text-gray-900">{{ supplier.ai_score|floatformat:2 }}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="text-sm text-gray-900">{{ supplier.on_time_delivery|floatformat:1 }}%</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="text-sm text-gray-900">{{ supplier.quality_acceptance|floatformat:1 }}%</span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="text-sm text-gray-900">{{ supplier.lead_time_accuracy|floatformat:1 }}%</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-sm text-gray-500 italic">No supplier performance data available</p>
+        {% endif %}
+    </div>
+
+    <!-- Charts Section -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <!-- Demand Trends Chart -->
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <h2 class="text-xl font-bold text-gray-900 mb-4">Demand Trends</h2>
+            <canvas id="demandTrendsChart" height="250"></canvas>
         </div>
         
-        <div class="bg-white p-6 rounded-lg shadow">
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">{% trans "Supplier Performance" %}</h3>
-            <p class="text-sm text-gray-600">{% trans "Coming soon: Supplier reliability and quality metrics" %}</p>
+        <!-- Supplier Performance Chart -->
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <h2 class="text-xl font-bold text-gray-900 mb-4">Top Suppliers by AI Score</h2>
+            <canvas id="supplierPerformanceChart" height="250"></canvas>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Demand Trends Chart
+    const demandCtx = document.getElementById('demandTrendsChart');
+    if (demandCtx) {
+        const demandData = {{ demand_trends|safe }};
+        new Chart(demandCtx, {
+            type: 'line',
+            data: {
+                labels: demandData.map(d => d.date),
+                datasets: [{
+                    label: 'Predicted Demand',
+                    data: demandData.map(d => d.demand),
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        },
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    },
+                    y: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Demand (units)'
+                        },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+    
+    // Supplier Performance Chart
+    const supplierCtx = document.getElementById('supplierPerformanceChart');
+    if (supplierCtx) {
+        const supplierData = {{ supplier_performance|safe }};
+        new Chart(supplierCtx, {
+            type: 'bar',
+            data: {
+                labels: supplierData.map(s => s.name),
+                datasets: [{
+                    label: 'AI Score',
+                    data: supplierData.map(s => s.ai_score),
+                    backgroundColor: 'rgba(147, 51, 234, 0.7)',
+                    borderColor: 'rgb(147, 51, 234)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return 'AI Score: ' + context.parsed.y.toFixed(3);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'Supplier'
+                        }
+                    },
+                    y: {
+                        display: true,
+                        title: {
+                            display: true,
+                            text: 'AI Score'
+                        },
+                        beginAtZero: true,
+                        max: 1.0
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
 {% endblock %}

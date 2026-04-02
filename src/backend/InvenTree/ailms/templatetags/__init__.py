@@ -1,1 +1,1 @@
-# Template tags package
+# Template tags for ailms app

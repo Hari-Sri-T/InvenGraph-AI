@@ -1,0 +1,246 @@
+{% extends "ailms/base.html" %}
+{% load static %}
+{% load ailms_filters %}
+
+{% block title %}{{ supplier.name }} - Supplier Details - AI Logistics{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+    {% if supplier %}
+    <!-- Breadcrumb -->
+    <nav class="mb-6 text-sm">
+        <ol class="flex items-center space-x-2 text-gray-600">
+            <li><a href="{% url 'ailms:dashboard' %}" class="hover:text-blue-600">Dashboard</a></li>
+            <li><span class="mx-2">/</span></li>
+            <li><a href="{% url 'ailms:supplier-list' %}" class="hover:text-blue-600">Suppliers</a></li>
+            <li><span class="mx-2">/</span></li>
+            <li class="text-gray-900 font-medium">{{ supplier.name }}</li>
+        </ol>
+    </nav>
+
+    <!-- Supplier Header -->
+    <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+        <div class="flex justify-between items-start">
+            <div class="flex-1">
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">{{ supplier.name }}</h1>
+                {% if supplier.description %}
+                <p class="text-gray-600 mb-4">{{ supplier.description }}</p>
+                {% endif %}
+                
+                <!-- Contact Information -->
+                <div class="flex flex-wrap gap-4 text-sm text-gray-600">
+                    {% if supplier.email %}
+                    <div class="flex items-center">
+                        <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                        </svg>
+                        <a href="mailto:{{ supplier.email }}" class="text-blue-600 hover:underline">{{ supplier.email }}</a>
+                    </div>
+                    {% endif %}
+                    {% if supplier.phone %}
+                    <div class="flex items-center">
+                        <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                        </svg>
+                        {{ supplier.phone }}
+                    </div>
+                    {% endif %}
+                    {% if supplier.website %}
+                    <div class="flex items-center">
+                        <svg class="w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/>
+                        </svg>
+                        <a href="{{ supplier.website }}" target="_blank" class="text-blue-600 hover:underline">{{ supplier.website }}</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Overall AI Score Badge -->
+            {% if ai_scores %}
+            <div class="ml-6 text-center bg-blue-50 rounded-lg p-4">
+                <div class="text-4xl font-bold text-blue-600 mb-1">
+                    {{ ai_scores.overall_score|floatformat:2 }}
+                </div>
+                <div class="text-sm text-gray-600">Overall AI Score</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Left Column: AI Scores and Reliability -->
+        <div class="lg:col-span-1 space-y-6">
+            <!-- AI Evaluation Scores -->
+            {% if ai_scores %}
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"/>
+                    </svg>
+                    AI Evaluation Scores
+                </h2>
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-sm text-gray-600">Price Score</span>
+                            <span class="text-sm font-medium text-gray-900">{{ ai_scores.price_score|floatformat:3 }}</span>
+                        </div>
+                        <div class="w-full h-2 bg-gray-200 rounded-full">
+                            <div class="h-2 bg-blue-500 rounded-full" style="width: {{ ai_scores.price_score|floatformat:0|mul:100 }}%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-sm text-gray-600">Lead Time Score</span>
+                            <span class="text-sm font-medium text-gray-900">{{ ai_scores.lead_time_score|floatformat:3 }}</span>
+                        </div>
+                        <div class="w-full h-2 bg-gray-200 rounded-full">
+                            <div class="h-2 bg-green-500 rounded-full" style="width: {{ ai_scores.lead_time_score|floatformat:0|mul:100 }}%"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-sm text-gray-600">Reliability Score</span>
+                            <span class="text-sm font-medium text-gray-900">{{ ai_scores.reliability_score|floatformat:3 }}</span>
+                        </div>
+                        <div class="w-full h-2 bg-gray-200 rounded-full">
+                            <div class="h-2 bg-purple-500 rounded-full" style="width: {{ ai_scores.reliability_score|floatformat:0|mul:100 }}%"></div>
+                        </div>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-4 italic">Average scores from last 10 AI evaluations</p>
+            </div>
+            {% endif %}
+
+            <!-- Reliability Metrics -->
+            {% if reliability_metrics %}
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    Reliability Metrics
+                </h2>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600">On-Time Delivery Rate:</span>
+                        <span class="text-sm font-medium text-gray-900">
+                            {{ reliability_metrics.on_time_delivery_rate|floatformat:1|mul:100 }}%
+                        </span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600">Quality Acceptance Rate:</span>
+                        <span class="text-sm font-medium text-gray-900">
+                            {{ reliability_metrics.quality_acceptance_rate|floatformat:1|mul:100 }}%
+                        </span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600">Lead Time Accuracy:</span>
+                        <span class="text-sm font-medium text-gray-900">
+                            {{ reliability_metrics.lead_time_accuracy|floatformat:1|mul:100 }}%
+                        </span>
+                    </div>
+                    <div class="flex justify-between items-center pt-3 border-t border-gray-200">
+                        <span class="text-sm text-gray-600">Total Orders:</span>
+                        <span class="text-sm font-medium text-gray-900">{{ reliability_metrics.total_orders }}</span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600">Successful Orders:</span>
+                        <span class="text-sm font-medium text-gray-900">{{ reliability_metrics.successful_orders }}</span>
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500 mt-4 italic">Last updated: {{ reliability_metrics.last_updated|date:"M d, Y" }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Right Column: Parts Supplied -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h2 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                    </svg>
+                    Parts Supplied
+                </h2>
+                
+                {% if parts %}
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Part</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IPN</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Multiple</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pack Qty</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            {% for part in parts %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-gray-900">{{ part.part_name }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-600">{{ part.part_IPN|default:"-" }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900 font-mono">{{ part.SKU }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">
+                                        {% if part.unit_price %}
+                                        ${{ part.unit_price }}
+                                        {% else %}
+                                        <span class="text-gray-400">-</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">{{ part.multiple|default:"1" }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm text-gray-900">{{ part.pack_quantity|default:"1" }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <a href="{% url 'ailms:part_detail' part.part_id %}" class="text-blue-600 hover:text-blue-800">
+                                        View Part
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-12">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No parts found</h3>
+                    <p class="mt-1 text-sm text-gray-500">This supplier doesn't have any parts configured yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- Supplier Not Found -->
+    <div class="bg-white rounded-lg shadow-sm p-12 text-center">
+        <svg class="mx-auto h-16 w-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <h2 class="mt-4 text-2xl font-bold text-gray-900">Supplier Not Found</h2>
+        <p class="mt-2 text-gray-600">The supplier you're looking for doesn't exist or has been removed.</p>
+        <a href="{% url 'ailms:supplier-list' %}" class="mt-6 inline-block px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+            Back to Suppliers
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

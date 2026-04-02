@@ -1,0 +1,24 @@
+# Agentic AI Procurement System Dependencies
+
+# LangGraph for multi-agent orchestration
+langgraph>=0.2.0
+langgraph-checkpoint-postgres>=1.0.0
+
+# Prophet for demand forecasting
+prophet>=1.1.5
+
+# XGBoost for fallback forecasting
+xgboost>=2.0.0
+
+# Data processing
+pandas>=2.0.0
+numpy>=1.24.0
+
+# HTTP requests for Ollama
+requests>=2.31.0
+
+# Already included in InvenTree:
+# - Django (web framework)
+# - django-q2 (background task queue)
+# - psycopg2 (PostgreSQL driver)
+# - djangorestframework (REST API)

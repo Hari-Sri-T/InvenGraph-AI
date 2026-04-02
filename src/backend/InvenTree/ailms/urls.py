@@ -7,7 +7,14 @@ from . import views
 
 app_name = 'ailms'
 
+# Create login view with auth_exempt attribute
+login_view = views.AILoginView.as_view()
+login_view.auth_exempt = True
+
 urlpatterns = [
+    # Login
+    path('login/', login_view, name='login'),
+    
     # Dashboard
     path('', RedirectView.as_view(pattern_name='ailms:dashboard-full', permanent=False), name='dashboard-redirect'),
     path('dashboard/', views.DashboardView.as_view(), name='dashboard'),

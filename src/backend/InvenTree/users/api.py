@@ -480,6 +480,12 @@ class LoginRedirect(RedirectView):
 
     def get_redirect_url(self, *args, **kwargs):
         """Return the URL to redirect to."""
+        # Honor the 'next' parameter if provided (e.g., from login redirects)
+        next_url = self.request.GET.get('next')
+        if next_url:
+            return next_url
+        
+        # Default to React frontend
         return f'/{FRONTEND_URL_BASE}/logged-in/'
 
 
