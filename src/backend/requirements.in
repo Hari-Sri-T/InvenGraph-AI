@@ -1,12 +1,12 @@
 # Please keep this list sorted - if you pin a version provide a reason
-django<6.0                              # Django package
+django<7.0                              # Django package
 blessed                                 # CLI for Q Monitor
-cryptography>=44.0.0                    # Core cryptographic functionality
+cryptography>=46.0.7                    # Core cryptographic functionality
 django-anymail[amazon_ses,postal]       # Email backend for various providers
 django-allauth[mfa,socialaccount,saml,openid,headless]   # SSO for external providers via OpenID
 django-cleanup                          # Automated deletion of old / unused uploaded files
 django-cors-headers                     # CORS headers extension for DRF
-django-dbbackup>=5.0.0                  # Backup / restore of database and media files
+django-dbbackup>=5.3.0                  # Backup / restore of database and media files
 django-error-report-2                   # Error report viewer for the admin interface
 django-filter                           # Extended filtering options
 django-flags                            # Feature flags
@@ -28,7 +28,7 @@ django-structlog                        # Structured logging
 django-stdimage                         # Advanced ImageField management
 django-storages[s3,sftp]                     # Storage backends for Django
 django-taggit                           # Tagging support
-django-otp==1.3.0                       # Two-factor authentication (legacy to ensure migrations) https://github.com/inventree/InvenTree/pull/6293
+django-otp==1.7.0                       # Two-factor authentication (legacy to ensure migrations) https://github.com/inventree/InvenTree/pull/6293
 django-oauth-toolkit                    # OAuth2 provider
 djangorestframework                     # DRF framework
 djangorestframework-simplejwt[crypto]   # JWT authentication
