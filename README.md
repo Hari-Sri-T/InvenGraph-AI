@@ -1,7 +1,7 @@
 <div align="center">
-  <h1>🤖 InvenGraph-AI</h1>
-  <p><strong>Agentic AI Procurement System built on top of InvenTree</strong></p>
-  <p>Autonomous inventory management powered by LangGraph, Prophet, and local LLMs (Ollama)</p>
+ <h1> InvenGraph-AI</h1>
+ <p><strong>Agentic AI Procurement System built on top of InvenTree</strong></p>
+ <p>Autonomous inventory management powered by LangGraph, Prophet, and local LLMs (Ollama)</p>
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/license/MIT)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
@@ -12,7 +12,7 @@
 
 ---
 
-## 📖 What is InvenGraph-AI?
+## What is InvenGraph-AI?
 
 **InvenGraph-AI** extends the open-source [InvenTree](https://inventree.org/) inventory management platform with a fully autonomous, event-driven AI procurement system (`ai_procurement` plugin).
 
@@ -26,26 +26,26 @@ When stock levels fall below a reorder threshold, the system **automatically**:
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 Stock Change / Sales Order
-        │
-        ▼
-  Django Signal (event trigger)
-        │
-        ▼
-  ┌─────────────────────────────────────────┐
-  │          LangGraph Pipeline             │
-  │                                         │
-  │  1. Data Collection                     │
-  │  2. Demand Forecasting  ◄── Prophet     │
-  │  3. Supplier Ranking    ◄── MCDA        │
-  │  4. Decision Making     ◄── Ollama LLM  │
-  │  5. Human Approval Gate  (HITL)         │
-  │  6. PO Execution        ◄── InvenTree   │
-  │  7. Learning Update     ◄── Feedback    │
-  └─────────────────────────────────────────┘
+
+
+ Django Signal (event trigger)
+
+
+
+ LangGraph Pipeline 
+
+ 1. Data Collection 
+ 2. Demand Forecasting Prophet 
+ 3. Supplier Ranking MCDA 
+ 4. Decision Making Ollama LLM 
+ 5. Human Approval Gate (HITL) 
+ 6. PO Execution InvenTree 
+ 7. Learning Update Feedback 
+
 ```
 
 ### Multi-Agent System
@@ -69,20 +69,20 @@ Stock Change / Sales Order
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-- **🔄 Autonomous Triggering** — Pipeline fires automatically on stock changes or sales orders via Django signals, with 60-second deduplication
-- **📈 Prophet Forecasting** — 180-day historical data analysis with seasonality detection, confidence intervals, and 7-day model caching
-- **🏆 Smart Supplier Ranking** — Configurable multi-criteria scoring with MOQ constraint checking and reliability tracking
-- **🧠 LLM-Powered Decisions** — Ollama llama3 with few-shot learning and JSON-structured output; rule-based fallback when LLM is unavailable
-- **👤 Human-in-the-Loop** — Approval gate with approve / reject / modify actions and 7-day timeout
-- **📚 Continuous Learning** — Logs outcomes, retrains Prophet models, adjusts reorder points, updates supplier reliability scores
-- **🖥️ Real-time UI** — React panel with 10-second auto-refresh, supplier comparison tables, and pipeline status timeline
-- **🔌 REST API** — 5 endpoints for programmatic pipeline management
+- ** Autonomous Triggering** — Pipeline fires automatically on stock changes or sales orders via Django signals, with 60-second deduplication
+- ** Prophet Forecasting** — 180-day historical data analysis with seasonality detection, confidence intervals, and 7-day model caching
+- ** Smart Supplier Ranking** — Configurable multi-criteria scoring with MOQ constraint checking and reliability tracking
+- ** LLM-Powered Decisions** — Ollama llama3 with few-shot learning and JSON-structured output; rule-based fallback when LLM is unavailable
+- ** Human-in-the-Loop** — Approval gate with approve / reject / modify actions and 7-day timeout
+- ** Continuous Learning** — Logs outcomes, retrains Prophet models, adjusts reorder points, updates supplier reliability scores
+- ** Real-time UI** — React panel with 10-second auto-refresh, supplier comparison tables, and pipeline status timeline
+- ** REST API** — 5 endpoints for programmatic pipeline management
 
 ---
 
-## 📊 Performance
+## Performance
 
 | Operation | Time |
 |---|---|
@@ -95,7 +95,7 @@ Stock Change / Sales Order
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -110,15 +110,15 @@ All services (InvenTree, Ollama) are pre-configured in Docker.
 1. **Open the project in VS Code**
 2. Press `F1` → **"Dev Containers: Reopen in Container"** (first build takes ~10–15 min)
 3. Inside the container, run the setup script:
-   ```bash
-   bash .devcontainer/setup_ai_procurement.sh
-   ```
-   This installs dependencies and pulls the llama3 model (~5–10 min).
+ ```bash
+ bash .devcontainer/setup_ai_procurement.sh
+ ```
+ This installs dependencies and pulls the llama3 model (~5–10 min).
 4. Start the server:
-   ```bash
-   cd src/backend/InvenTree
-   invoke server
-   ```
+ ```bash
+ cd src/backend/InvenTree
+ invoke server
+ ```
 5. Open **http://localhost:8000/admin** and create a superuser if prompted.
 
 ---
@@ -194,7 +194,7 @@ python manage.py runserver 0.0.0.0:8000
 
 ---
 
-## 🧪 Quick Test (5 minutes)
+## Quick Test (5 minutes)
 
 Once the server is running at **http://localhost:8000**:
 
@@ -211,23 +211,23 @@ python manage.py drf_create_token <your_username>
 **3. Trigger the pipeline:**
 ```bash
 curl -X POST http://localhost:8000/api/ai/procurement/pipeline/trigger/ \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Token YOUR_TOKEN" \
-  -d '{"part_id": 1}'
+ -H "Content-Type: application/json" \
+ -H "Authorization: Token YOUR_TOKEN" \
+ -d '{"part_id": 1}'
 ```
 
 **4. Check pending approvals:**
 ```bash
 curl http://localhost:8000/api/ai/procurement/approvals/ \
-  -H "Authorization: Token YOUR_TOKEN"
+ -H "Authorization: Token YOUR_TOKEN"
 ```
 
 **5. Approve the recommendation:**
 ```bash
 curl -X POST http://localhost:8000/api/ai/procurement/approvals/<REQUEST_ID>/action/ \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Token YOUR_TOKEN" \
-  -d '{"action": "approve"}'
+ -H "Content-Type: application/json" \
+ -H "Authorization: Token YOUR_TOKEN" \
+ -d '{"action": "approve"}'
 ```
 
 **6. Check Purchase Orders** — a new PO should appear in the InvenTree UI linked to the recommended supplier.
@@ -236,46 +236,46 @@ You can also trigger the pipeline naturally by reducing a stock item's quantity 
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 The AI procurement system lives entirely in one plugin directory:
 
 ```
 src/backend/InvenTree/ai_procurement/
-├── agents/
-│   ├── demand_agent.py        # Prophet demand forecasting
-│   ├── supplier_agent.py      # Multi-criteria supplier ranking
-│   ├── decision_agent.py      # Ollama LLM integration
-│   └── execution_agent.py     # Purchase order creation
-├── learning/
-│   └── learning_layer.py      # Continuous improvement feedback loop
-├── management/commands/
-│   └── update_actual_demand.py
-├── migrations/
-│   └── 0001_initial.py
-├── models.py                  # 10 Django models
-├── graph.py                   # LangGraph 7-node workflow
-├── state_manager.py           # LangGraph state & checkpointing
-├── signals.py                 # Django event triggers
-├── tasks.py                   # Async background tasks (django-q2)
-├── approval_gate.py           # Human-in-the-loop logic
-├── notifications.py           # In-app and email notifications
-├── views.py                   # REST API endpoints
-├── urls.py                    # URL routing
-├── config.py                  # All configuration parameters
-├── requirements.txt           # AI-specific Python dependencies
-└── setup.sh                   # Setup helper script
+ agents/
+ demand_agent.py # Prophet demand forecasting
+ supplier_agent.py # Multi-criteria supplier ranking
+ decision_agent.py # Ollama LLM integration
+ execution_agent.py # Purchase order creation
+ learning/
+ learning_layer.py # Continuous improvement feedback loop
+ management/commands/
+ update_actual_demand.py
+ migrations/
+ 0001_initial.py
+ models.py # 10 Django models
+ graph.py # LangGraph 7-node workflow
+ state_manager.py # LangGraph state & checkpointing
+ signals.py # Django event triggers
+ tasks.py # Async background tasks (django-q2)
+ approval_gate.py # Human-in-the-loop logic
+ notifications.py # In-app and email notifications
+ views.py # REST API endpoints
+ urls.py # URL routing
+ config.py # All configuration parameters
+ requirements.txt # AI-specific Python dependencies
+ setup.sh # Setup helper script
 
 src/frontend/src/pages/part/
-└── AIProcurementPanel.tsx     # React UI panel
+ AIProcurementPanel.tsx # React UI panel
 
 scripts/
-└── setup_env.sh               # Environment variable setup script
+ setup_env.sh # Environment variable setup script
 ```
 
 ---
 
-## 🔌 API Reference
+## API Reference
 
 | Method | Endpoint | Description |
 |---|---|---|
@@ -286,7 +286,7 @@ scripts/
 
 ---
 
-## ⚙️ Configuration Reference
+## Configuration Reference
 
 All settings can be overridden via environment variables:
 
@@ -304,7 +304,7 @@ All settings can be overridden via environment variables:
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 **Pipeline doesn't trigger automatically**
 - Check that `minimum_stock` is set on the part
@@ -315,7 +315,7 @@ All settings can be overridden via environment variables:
 ```bash
 # Verify Ollama is running and model is available
 curl http://localhost:11434/api/tags
-ollama list   # should show llama3
+ollama list # should show llama3
 ```
 
 **Migration errors**
@@ -330,7 +330,7 @@ python manage.py migrate ai_procurement
 
 ---
 
-## 📚 Further Documentation
+## Further Documentation
 
 - **Testing Guide**: [`docs/TESTING_CHECKLIST.md`](docs/TESTING_CHECKLIST.md)
 - **AI Module README**: [`src/backend/InvenTree/ai_procurement/README.md`](src/backend/InvenTree/ai_procurement/README.md)
@@ -339,7 +339,7 @@ python manage.py migrate ai_procurement
 
 ---
 
-## 🤝 Acknowledgements
+## Acknowledgements
 
 Built on top of:
 - [InvenTree](https://inventree.org/) — Open-source inventory management
@@ -347,6 +347,6 @@ Built on top of:
 - [Prophet](https://facebook.github.io/prophet/) — Time-series forecasting
 - [Ollama](https://ollama.ai/) — Local LLM inference
 
-## ⚠️ License
+## License
 
 Distributed under the [MIT License](LICENSE).
