@@ -44,10 +44,10 @@ jobs:
       submit-performance: ${{ steps.runner-perf.outputs.submit-performance }}
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
         with:
           persist-credentials: false
-      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # pin@v4.0.1
+      - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # pin@v4.0.2
         id: filter
         with:
           filters: |
@@ -108,11 +108,11 @@ jobs:
     if: needs.paths-filter.outputs.cicd == 'true' || needs.paths-filter.outputs.server == 'true' || needs.paths-filter.outputs.frontend == 'true' || needs.paths-filter.outputs.requirements == 'true' || needs.paths-filter.outputs.force == 'true'
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
         with:
           persist-credentials: false
       - name: Set up Python ${{ env.python_version }}
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # pin@v6.2.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # pin@v7.0.0
         with:
           python-version: ${{ env.python_version }}
           cache: "pip"
@@ -130,7 +130,7 @@ jobs:
     if: needs.paths-filter.outputs.server == 'true' || needs.paths-filter.outputs.requirements == 'true' || needs.paths-filter.outputs.force == 'true'
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
         with:
           persist-credentials: false
       - name: Environment Setup
@@ -152,11 +152,11 @@ jobs:
 
     steps:
       - name: Checkout Code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
         with:
           persist-credentials: false
       - name: Set up Python ${{ env.python_version }}
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # pin@v6.2.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # pin@v7.0.0
         with:
           python-version: ${{ env.python_version }}
       - name: Check Config
@@ -190,7 +190,7 @@ jobs:
       version: ${{ steps.version.outputs.version }}
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
         with:
           persist-credentials: false
       - name: Environment Setup
@@ -202,7 +202,7 @@ jobs:
       - name: Export API Documentation
         run: invoke dev.schema --ignore-warnings --filename src/backend/InvenTree/schema.yml
       - name: Upload schema
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # pin@v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # pin@v7.0.1
         with:
           name: schema.yml
           path: src/backend/InvenTree/schema.yml
@@ -222,7 +222,7 @@ jobs:
           echo "Downloaded api.yaml"
       - name: Running OpenAPI Spec diff action
         id: breaking_changes
-        uses: oasdiff/oasdiff-action/diff@1f38ea5ea0b4a2e4e49901c3bcdf4386a05e9ea1 # pin@main
+        uses: oasdiff/oasdiff-action/diff@0ab8ad204b00d25acc5ae87106281433e288d0c1 # pin@main
         with:
           base: "api.yaml"
           revision: "src/backend/InvenTree/schema.yml"
@@ -251,17 +251,17 @@ jobs:
       - name: Extract settings / tags
         run: invoke int.export-definitions --basedir docs
       - name: Upload settings
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # pin@v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # pin@v7.0.1
         with:
           name: inventree_settings.json
           path: docs/generated/inventree_settings.json
       - name: Upload tags
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # pin@v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # pin@v7.0.1
         with:
           name: inventree_tags.yml
           path: docs/generated/inventree_tags.yml
       - name: Upload filters
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # pin@v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # pin@v7.0.1
         with:
           name: inventree_filters.yml
           path: docs/generated/inventree_filters.yml
@@ -275,7 +275,7 @@ jobs:
       version: ${{ needs.schema.outputs.version }}
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
         name: Checkout Code
         with:
           repository: inventree/schema
@@ -301,7 +301,7 @@ jobs:
           echo "after move"
           ls -la artifact
           rm -rf artifact
-      - uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9 # pin@v7.1.0
+      - uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # pin@v7.2.0
         name: Commit schema changes
         with:
           commit_message: "Update API schema for ${{ env.version }} / ${{ github.sha }}"
@@ -332,7 +332,7 @@ jobs:
       node_version: '>=20.19.6'
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
         with:
           persist-credentials: false
       - name: Environment Setup
@@ -363,7 +363,7 @@ jobs:
           pip install .
         if: needs.paths-filter.outputs.submit-performance == 'true'
       - name: Performance Reporting
-        uses: CodSpeedHQ/action@1c8ae4843586d3ba879736b7f6b7b0c990757fab # pin@v4
+        uses: CodSpeedHQ/action@f22792bfac16f3e14eb9fbea76f4a48e9cc22b93 # pin@v4
         # check if we are in inventree/inventree - reporting only works in that OIDC context
         if: github.repository == 'inventree/InvenTree' && needs.paths-filter.outputs.submit-performance == 'true'
         with:
@@ -390,7 +390,7 @@ jobs:
       python_version: ${{ matrix.python_version }}
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
         with:
           persist-credentials: false
       - name: Environment Setup
@@ -409,13 +409,13 @@ jobs:
       - name: Coverage Tests
         run: invoke dev.test --check --coverage --translations
       - name: Upload raw coverage to artifacts
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # pin@v7.0.0
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # pin@v7.0.1
         with:
           name: coverage
           path: .coverage
           retention-days: 14
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # pin@v5.5.2
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # pin@v7.0.0
         if: always()
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -441,7 +441,7 @@ jobs:
       INVENTREE_AUTO_UPDATE: true
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
         with:
           persist-credentials: false
       - name: Environment Setup
@@ -454,7 +454,7 @@ jobs:
         env:
           node_version: '>=20.19.0'
       - name: Performance Reporting
-        uses: CodSpeedHQ/action@1c8ae4843586d3ba879736b7f6b7b0c990757fab # pin@v4
+        uses: CodSpeedHQ/action@f22792bfac16f3e14eb9fbea76f4a48e9cc22b93 # pin@v4
         with:
           mode: walltime
           run: inv dev.test --pytest
@@ -492,7 +492,7 @@ jobs:
           - 6379:6379
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
         with:
           persist-credentials: false
       - name: Environment Setup
@@ -541,7 +541,7 @@ jobs:
           - 3306:3306
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
         with:
           persist-credentials: false
       - name: Environment Setup
@@ -584,7 +584,7 @@ jobs:
           - 5432:5432
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
         with:
           persist-credentials: false
       - name: Environment Setup
@@ -597,7 +597,7 @@ jobs:
       - name: Run Tests
         run: invoke dev.test --check --migrations --report --coverage --translations
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # pin@v5.5.2
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # pin@v7.0.0
         if: always()
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -618,7 +618,7 @@ jobs:
       INVENTREE_PLUGINS_ENABLED: false
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
         with:
           persist-credentials: false
         name: Checkout Code
@@ -697,7 +697,7 @@ jobs:
       VITE_COVERAGE_BUILD: true
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
         with:
           persist-credentials: false
       - name: Environment Setup
@@ -725,7 +725,7 @@ jobs:
           invoke static
           env INVENTREE_CUSTOM_SPLASH="img/playwright_custom_splash.png" INVENTREE_CUSTOM_LOGO="img/playwright_custom_logo.png" npx nyc playwright test --project=customization
           npx nyc playwright test --project=chromium --project=firefox
-      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # pin@v7.0.0
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # pin@v7.0.1
         if: ${{ !cancelled() && steps.tests.outcome == 'failure' }}
         with:
           name: playwright-report
@@ -734,7 +734,7 @@ jobs:
       - name: Report coverage
         run: cd src/frontend && npx nyc report --report-dir ./coverage --temp-dir .nyc_output --reporter=lcov --exclude-after-remap false
       - name: Upload coverage reports to Codecov
-        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # pin@v5.5.2
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # pin@v7.0.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: inventree/InvenTree
@@ -753,7 +753,7 @@ jobs:
     timeout-minutes: 60
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
         with:
           persist-credentials: false
       - name: Environment Setup
@@ -770,7 +770,7 @@ jobs:
         run: |
           cd src/backend/InvenTree/web/static
           zip -r frontend-build.zip web/ web/.vite
-      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # pin@v7.0.0
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # pin@v7.0.1
         with:
           name: frontend-build
           path: src/backend/InvenTree/web/static/web
@@ -786,16 +786,16 @@ jobs:
       security-events: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # pin@v6.0.2
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # pin@v7.0.1
         with:
           persist-credentials: false
-      - uses: hynek/setup-cached-uv@757bedc3f972eb7227a1aa657651f15a8527c817 # pin@v2
+      - uses: hynek/setup-cached-uv@34e35d30f1ebc7421a5cc733bca38dcc62603960 # pin@v2
       - name: Run zizmor
         run: uvx zizmor --format sarif . > results.sarif
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Upload SARIF file
-        uses: github/codeql-action/upload-sarif@cdefb33c0f6224e58673d9004f47f7cb3e328b89 # pin@v3
+        uses: github/codeql-action/upload-sarif@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # pin@v3
         with:
           sarif_file: results.sarif
           category: zizmor
